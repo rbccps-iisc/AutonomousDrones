@@ -44,6 +44,7 @@ import cv2.aruco as aruco
 from sensor_msgs.msg import Image
 import sys, time, math
 from datetime import datetime
+from geometry_msgs.msg import Vector3
 
 class ArucoSingleTracker():
     def __init__(self,
@@ -54,11 +55,16 @@ class ArucoSingleTracker():
                 camera_size=[640,480],
                 show_video=False,
                 simulation=False,
-                record_video=True
+                record_video=False
                 ):
         
-        #rospy.init_node('cam_capture')
-        rospy.Subscriber('/iris_extended/c920/image_raw', Image, self.imageCb)
+        rospy.init_node('cam_capture')
+
+        if simulation:
+            #rospy.init_node('cam_capture')
+            rospy.Subscriber('/iris_extended/c920/image_raw', Image, self.imageCb)
+        else:
+            rospy.Subscriber('/usb_cam/image_raw', Image, self.imageCb)
         
         self.bridge = CvBridge()
      
@@ -157,6 +163,9 @@ class ArucoSingleTracker():
         x = y = z = 0
         #rate = rospy.Rate(30)
 
+        pub_coord = rospy.Publisher('aruco_coord', Vector3, queue_size=1)
+        coord = Vector3()
+
         while not self._kill and not rospy.is_shutdown():
             
             #-- Read the camera frame
@@ -164,7 +173,8 @@ class ArucoSingleTracker():
                 frame = self.frame
 
             else:
-                ret_vid, frame = self._cap.read()
+                frame = self.frame
+                #ret_vid, frame = self._cap.read()
 
             self._update_fps_read()
             
@@ -248,8 +258,14 @@ class ArucoSingleTracker():
                     self._cap.release()
                     cv2.destroyAllWindows()
 
-            if self.record_video and ret_vid == True:
+            if self.record_video:
                 self.out.write(frame)
+
+            if loop:
+                coord.x = x
+                coord.y = y
+                coord.z = z
+                pub_coord.publish(coord)
 
             if not loop: return(marker_found, x, y, z, corners)
             
@@ -263,7 +279,7 @@ if __name__ == "__main__":
     calib_path  = "./"
     camera_matrix   = np.loadtxt(calib_path+'cameraMatrix.txt', delimiter=',')
     camera_distortion   = np.loadtxt(calib_path+'cameraDistortion.txt', delimiter=',')                                      
-    aruco_tracker = ArucoSingleTracker(id_to_find=id_to_find, marker_size=marker_size, show_video=True, camera_matrix=camera_matrix, camera_distortion=camera_distortion)
+    aruco_tracker = ArucoSingleTracker(id_to_find=id_to_find, marker_size=marker_size, show_video=True, camera_matrix=camera_matrix, camera_distortion=camera_distortion, record_video=False)
     
     aruco_tracker.track(loop = True)
 

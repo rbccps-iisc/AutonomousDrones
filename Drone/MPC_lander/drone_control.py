@@ -71,7 +71,9 @@ start_clock                             = False
 contact_made                            = False
 init_pose                               = False
 gz_x = gz_y = gz_z = x_0 = y_0          = 0
-
+full_avg                                = 0.
+vision_avg                              = 0.
+coord                                   = [0,0,0]
 
 id_to_find          = 72
 marker_size         = 20
@@ -84,7 +86,7 @@ file_str = '_' + str(datetime.now().month) + '_' + str(datetime.now().day) + '_'
 
 if not path.isfile(file_str):
     csvfile = open(file_str,'w')
-    fieldnames = ['Time','cart_x','cart_y','cart_z','vel_x','vel_y','vel_z','desired_x','desired_n','desired_u']
+    fieldnames = ['Time','cart_x','cart_y','cart_z','vel_x','vel_y','vel_z','desired_x','desired_y','desired_z']
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
     writer.writeheader()
     csvfile.close()
@@ -249,10 +251,17 @@ def armed_cb(data):
     global armed
     armed = data.armed
 
+def aruco_coord_cb(data):
+    global coord
+    coord[0] = data.x
+    coord[1] = data.y
+    coord[2] = data.z
+
 
 def main():
     global home_xy_recorded, home_z_recorded, cart_x, cart_y, cart_z, desired_x, desired_y, desired_z, home_yaw, aruco_x, aruco_y, aruco_z, armed
-    global home_x, home_z, home_y, limit_x, limit_y, limit_z, cont, n, t, start_time, cached_var, detected_aruco, time_taken
+    global home_x, home_z, home_y, limit_x, limit_y, limit_z, cont, n, t, start_time, cached_var, detected_aruco, time_taken, coord
+    global vision_avg, full_avg
     xAnt = yAnt = 0
     acc = 0
     max_acc = 0
@@ -261,8 +270,8 @@ def main():
     
     rate = rospy.Rate(hz)
 
-    aruco_tracker       = ArucoSingleTracker(id_to_find=id_to_find, marker_size=marker_size, show_video=False, 
-                camera_distortion=camera_distortion, camera_matrix=camera_matrix, simulation=False, record_video=True)
+    #aruco_tracker       = ArucoSingleTracker(id_to_find=id_to_find, marker_size=marker_size, show_video=False, 
+    #            camera_distortion=camera_distortion, camera_matrix=camera_matrix, simulation=False, record_video=False)
 
     tf_buff = tf2_ros.Buffer()
     tf_listener = tf2_ros.TransformListener(tf_buff)
@@ -275,6 +284,7 @@ def main():
 #    rospy.Subscriber("/gazebo/model_states", ModelStates, get_pos_cb)
     rospy.Subscriber("/mavros/local_position/velocity_local", TwistStamped, velocity_cb)
     rospy.Subscriber("/mavros/state", State, armed_cb)
+    rospy.Subscriber("/aruco_coord", Vector3, aruco_coord_cb)
 
 
     #time subscriber
@@ -306,7 +316,7 @@ def main():
 
     mavros.command.arming(True)
     
-    set_mode(0, 'OFFBOARD')
+    #set_mode(0, 'OFFBOARD')
     
     if(cart_z < 1):
         # set_mode(0, 'GUIDED')
@@ -329,8 +339,21 @@ def main():
 #    time.sleep(0.2)
     
     while not rospy.is_shutdown():
-        marker_found, x_cm, y_cm, z_cm, _ = aruco_tracker.track(loop=False)
+        cont = cont + 1
 
+        start_timer = time.time()
+
+        #marker_found, x_cm, y_cm, z_cm, _ = aruco_tracker.track(loop=False)
+
+        x_cm,y_cm,z_cm = coord
+
+        if coord==[0,0,0]: 
+            marker_found = False
+        else:
+            marker_found = True
+
+        print("Vision Time =\t", time.time()-start_timer)
+        vision_avg = (vision_avg + time.time()-start_timer)
     	# yaw = 360.0 + yaw if yaw < 0 else yaw
 
         if home_z_recorded is False and cart_z != 0 and yaw != 0:
@@ -357,11 +380,11 @@ def main():
             aruco_x = p.point.x
             aruco_y = p.point.y
             aruco_z = p.point.z
-            velocity_x_des, cached_var, diff = MPC_solver(aruco_x, 0, limit_x, 0, n, t, True, variables = cached_var, vel_limit = 0.1, acc=1, curr_vel=vel_x)
+            velocity_x_des, cached_var, diff = MPC_solver(aruco_x, -0.1, limit_x, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc=2, curr_vel=vel_x)
             x_array = cached_var.get("points")
-            velocity_y_des, cached_var, _ = MPC_solver(aruco_y, 0, limit_y, 0, n, t, True, variables = cached_var, vel_limit = 0.1, acc=1, curr_vel=vel_y)
+            velocity_y_des, cached_var, _ = MPC_solver(aruco_y, 0, limit_y, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc=2, curr_vel=vel_y)
             y_array = cached_var.get("points")
-            velocity_z_des, cached_var, _ = MPC_solver(aruco_z, 0, limit_z, 0, n, t, True, variables = cached_var, vel_limit = 0.2, acc=0.2, curr_vel=vel_z, debug=True)
+            velocity_z_des, cached_var, _ = MPC_solver(aruco_z, 0, limit_z, 0, n, t, True, variables = cached_var, vel_limit = 0.2, acc=0, curr_vel=vel_z, debug=False)
             z_array = cached_var.get("points")
             mpc_point_arr = np.transpose(np.row_stack((x_array, y_array, z_array)))
 
@@ -371,7 +394,7 @@ def main():
 
         elif(not marker_found and not detected_aruco):
             start_time = rospy.Time.now()
-            print(start_time)
+            print("----------------------------NOT SEEN------------------------------------")
 
             velocity_x_des = 0
             velocity_y_des = 0
@@ -399,9 +422,9 @@ def main():
             writer.writerow([rospy.get_time(), float(cart_x), float(cart_y), float(cart_z), float(vel_x), float(vel_y), float(vel_z), float(velocity_x_des), float(velocity_y_des), float(velocity_z_des)])
             data_timer = 0.
 
-        dist = sqrt((aruco_x)**2+(aruco_y)**2)#+(aruco_u)**2)
+        dist = sqrt((aruco_x+0.1)**2+(aruco_y)**2)#+(aruco_u)**2)
 
-        if(dist < 0.25 and marker_found == True and cart_z < 2):
+        if(dist < 0.1 and marker_found == True and cart_z < 1):
             velocity_x_des = velocity_y_des = 0
 
             print("Time to land:\t", hold_timer)
@@ -423,81 +446,85 @@ def main():
             print("MPC Max:",max_acc)
 
 
-        if(detected_aruco):
-            desired_point = PointStamped(header=Header(stamp=rospy.get_rostime()))
-            desired_point.header.frame_id = 'map'
-            desired_point.point.x = -y_cm/100
-            desired_point.point.y = -x_cm/100
-            desired_point.point.z = z_cm/100
-            pub.publish(desired_point)
+        # if(detected_aruco):
+        #     desired_point = PointStamped(header=Header(stamp=rospy.get_rostime()))
+        #     desired_point.header.frame_id = 'map'
+        #     desired_point.point.x = -y_cm/100
+        #     desired_point.point.y = -x_cm/100
+        #     desired_point.point.z = z_cm/100
+        #     pub.publish(desired_point)
 
-            gps_point = PointStamped(header=Header(stamp=rospy.get_rostime()))
-            gps_point.header.frame_id = 'map'
-            gps_point.point.x = aruco_x
-            gps_point.point.y = aruco_y
-            gps_point.point.z = aruco_z
-            pub2.publish(gps_point)
+        #     gps_point = PointStamped(header=Header(stamp=rospy.get_rostime()))
+        #     gps_point.header.frame_id = 'map'
+        #     gps_point.point.x = aruco_x
+        #     gps_point.point.y = aruco_y
+        #     gps_point.point.z = aruco_z
+        #     pub2.publish(gps_point)
 
-            ekf_pose = PoseStamped()
-            ekf_pose.header.frame_id = "map"
-            ekf_pose.pose.position.x = ekf_x
-            ekf_pose.pose.position.y = ekf_y
-            ekf_pose.pose.position.z = ekf_z
+        #     ekf_pose = PoseStamped()
+        #     ekf_pose.header.frame_id = "map"
+        #     ekf_pose.pose.position.x = ekf_x
+        #     ekf_pose.pose.position.y = ekf_y
+        #     ekf_pose.pose.position.z = ekf_z
 
-            pose = PoseStamped()
-            pose.header.frame_id = "map"
-            pose.pose.position.x = pos.x
-            pose.pose.position.y = pos.y
-            pose.pose.position.z = pos.z
+        #     pose = PoseStamped()
+        #     pose.header.frame_id = "map"
+        #     pose.pose.position.x = pos.x
+        #     pose.pose.position.y = pos.y
+        #     pose.pose.position.z = pos.z
 
             
-            mpc_pose_array = [None] * n
-            for i in range(0, n):
-                mpc_pose = PoseStamped()
-                mpc_pose.header.seq = i
-                mpc_pose.header.stamp = rospy.Time.now() + rospy.Duration(t * 1)
-                mpc_pose.header.frame_id = "map"
-                mpc_pose.pose.position.x = mpc_point_arr[i][0]# + desired_x - home_x
-                mpc_pose.pose.position.y = mpc_point_arr[i][1]# + desired_y - home_y
-                mpc_pose.pose.position.z = mpc_point_arr[i][2]# + desired_z - home_z
-                mpc_pose_array[i] = mpc_pose
+        #     mpc_pose_array = [None] * n
+        #     for i in range(0, n):
+        #         mpc_pose = PoseStamped()
+        #         mpc_pose.header.seq = i
+        #         mpc_pose.header.stamp = rospy.Time.now() + rospy.Duration(t * 1)
+        #         mpc_pose.header.frame_id = "map"
+        #         mpc_pose.pose.position.x = mpc_point_arr[i][0]# + desired_x - home_x
+        #         mpc_pose.pose.position.y = mpc_point_arr[i][1]# + desired_y - home_y
+        #         mpc_pose.pose.position.z = mpc_point_arr[i][2]# + desired_z - home_z
+        #         mpc_pose_array[i] = mpc_pose
 
-            # if (xAnt != pose.pose.position.x and yAnt != pose.pose.position.y):
-            pose.header.seq = path.header.seq + 1
-            path.header.frame_id = "map"
-            path.header.stamp = rospy.Time.now()
-            pose.header.stamp = path.header.stamp
-            path.poses.append(pose)
-            ekf_pose.header.seq = ekf_path.header.seq + 1
-            ekf_path.header.frame_id = "map"
-            ekf_path.header.stamp = rospy.Time.now()
-            ekf_pose.header.stamp = ekf_path.header.stamp
-            ekf_path.poses.append(ekf_pose)
-            # mpc_pose.header.seq = ekf_path.header.seq + 1
-            mpc_path.header.frame_id = "map"
-            mpc_path.header.stamp = rospy.Time.now()
-            # mpc_pose.header.stamp = mpc_path.header.stamp
-            mpc_path.poses = mpc_pose_array
-            cont = cont + 1
+        #     # if (xAnt != pose.pose.position.x and yAnt != pose.pose.position.y):
+        #     pose.header.seq = path.header.seq + 1
+        #     path.header.frame_id = "map"
+        #     path.header.stamp = rospy.Time.now()
+        #     pose.header.stamp = path.header.stamp
+        #     path.poses.append(pose)
+        #     ekf_pose.header.seq = ekf_path.header.seq + 1
+        #     ekf_path.header.frame_id = "map"
+        #     ekf_path.header.stamp = rospy.Time.now()
+        #     ekf_pose.header.stamp = ekf_path.header.stamp
+        #     ekf_path.poses.append(ekf_pose)
+        #     # mpc_pose.header.seq = ekf_path.header.seq + 1
+        #     mpc_path.header.frame_id = "map"
+        #     mpc_path.header.stamp = rospy.Time.now()
+        #     # mpc_pose.header.stamp = mpc_path.header.stamp
+        #     mpc_path.poses = mpc_pose_array
 
-            xAnt = pose.pose.orientation.x
-            yAnt = pose.pose.position.y
+        #     xAnt = pose.pose.orientation.x
+        #     yAnt = pose.pose.position.y
 
-            pub4.publish(path)
-            pub5.publish(ekf_path)
-            pub6.publish(mpc_path)
+        #     pub4.publish(path)
+        #     pub5.publish(ekf_path)
+        #     pub6.publish(mpc_path)
 
-            if cont > max_append and len(path.poses) != 0 and len(ekf_path.poses):
-                    path.poses.pop(0)
-                    ekf_path.poses.pop(0)
+            # if cont > max_append and len(path.poses) != 0 and len(ekf_path.poses):
+            #         path.poses.pop(0)
+            #         ekf_path.poses.pop(0)
 
         hold_timer = hold_timer + delta_time
         
         if(hold_timer < 0.2):
             set_mode(0, 'OFFBOARD')
 
+        print("Full Time =\t", time.time()-start_timer)
+        full_avg = (full_avg + time.time()-start_timer)
+
         rate.sleep()
 
+    print("Vision Average Time =\t", vision_avg/cont)
+    print("Full Average Time =\t", full_avg/cont)
         # br2.sendTransform((0, 0, 0), (0, 0, 0, 1), rospy.Time.now(), "fcu", "map")
 
         
