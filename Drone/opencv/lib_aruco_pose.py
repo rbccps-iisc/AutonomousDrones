@@ -194,8 +194,6 @@ class ArucoSingleTracker():
                 z = tvec[2]
 
                 #-- Draw the detected marker and put a reference frame over it
-                aruco.drawDetectedMarkers(frame, corners)
-                aruco.drawAxis(frame, self._camera_matrix, self._camera_distortion, rvec, tvec, 10)
 
                 #-- Obtain the rotation matrix tag->camera
                 R_ct    = np.matrix(cv2.Rodrigues(rvec)[0])
@@ -211,6 +209,8 @@ class ArucoSingleTracker():
                 if verbose: print("Marker X = %.1f  Y = %.1f  Z = %.1f  - fps = %.0f"%(tvec[0], tvec[1], tvec[2],self.fps_detect))
 
                 if show_video:
+                    aruco.drawDetectedMarkers(frame, corners)
+                    aruco.drawAxis(frame, self._camera_matrix, self._camera_distortion, rvec, tvec, 10)
 
                     #-- Print the tag position in camera frame
                     str_position = "MARKER Position x=%4.0f  y=%4.0f  z=%4.0f"%(tvec[0], tvec[1], tvec[2])
@@ -240,7 +240,7 @@ class ArucoSingleTracker():
                 dim = (160,120)
                 frame_new = cv2.resize(frame, dim, interpolation =cv2.INTER_AREA)
                 #cv2.imwrite(file,)
-                cv2.imshow('frame', frame)
+                cv2.imshow('frame', frame_new)
 
                 if self.record_video:
                     if ret_vid == True:
@@ -267,7 +267,7 @@ if __name__ == "__main__":
     calib_path  = ""
     camera_matrix   = np.loadtxt(calib_path+'cameraMatrix.txt', delimiter=',')
     camera_distortion   = np.loadtxt(calib_path+'cameraDistortion.txt', delimiter=',')                                      
-    aruco_tracker = ArucoSingleTracker(id_to_find=id_to_find, marker_size=marker_size, show_video=True, camera_matrix=camera_matrix, camera_distortion=camera_distortion)
+    aruco_tracker = ArucoSingleTracker(id_to_find=id_to_find, marker_size=marker_size, show_video=False, camera_matrix=camera_matrix, camera_distortion=camera_distortion)
     
     aruco_tracker.track(verbose=True)
     # aruco_tracker.track(loop = False)
