@@ -8,7 +8,7 @@ sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from datetime import datetime
 from opencv.lib_aruco_pose import ArucoSingleTracker
-from sensor_msgs.msg import Joy
+from sensor_msgs.msg import Joy, Range
 from std_msgs.msg import Header, Float32, Float64, Empty
 from geometry_msgs.msg import PoseStamped, TwistStamped, Vector3, Quaternion, Point, Twist, PointStamped
 from rosgraph_msgs.msg import Clock
@@ -86,7 +86,7 @@ file_str = '_' + str(datetime.now().month) + '_' + str(datetime.now().day) + '_'
 
 if not path.isfile(file_str):
     csvfile = open(file_str,'w')
-    fieldnames = ['Time','cart_x','cart_y','cart_z','vel_x','vel_y','vel_z','desired_x','desired_y','desired_z']
+    fieldnames = ['Time','cart_x','cart_y','cart_z','vel_x','vel_y','vel_z','desired_x','desired_y','desired_z','aruco_x','aruco_y']
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
     writer.writeheader()
     csvfile.close()
@@ -165,7 +165,7 @@ def gps_local_cb(data):
 
     cart_x = data.pose.pose.position.x
     cart_y = data.pose.pose.position.y
-    cart_z = data.pose.pose.position.z
+    # cart_z = data.pose.pose.position.z
 
     if home_xy_recorded is False and cart_x != 0 and cart_y != 0:
         home_x = cart_x
@@ -258,6 +258,11 @@ def aruco_coord_cb(data):
     coord[2] = data.z
 
 
+def range_cb(data):
+    global cart_z
+    cart_z = data.range
+
+
 def main():
     global home_xy_recorded, home_z_recorded, cart_x, cart_y, cart_z, desired_x, desired_y, desired_z, home_yaw, aruco_x, aruco_y, aruco_z, armed
     global home_x, home_z, home_y, limit_x, limit_y, limit_z, cont, n, t, start_time, cached_var, detected_aruco, time_taken, coord
@@ -285,7 +290,7 @@ def main():
     rospy.Subscriber("/mavros/local_position/velocity_local", TwistStamped, velocity_cb)
     rospy.Subscriber("/mavros/state", State, armed_cb)
     rospy.Subscriber("/aruco_coord", Vector3, aruco_coord_cb)
-
+    rospy.Subscriber("/mavros/distance_sensor/lidarlite_pub", Range, range_cb)
 
     #time subscriber
     rospy.Subscriber('clock', Clock, clock_cb)
@@ -294,8 +299,8 @@ def main():
     pub2 = rospy.Publisher('gps_point', PointStamped, queue_size = 5)
     pub3 = rospy.Publisher('boundary_cube', Marker, queue_size = 1)
     pub4 = rospy.Publisher('path', Path, queue_size=1)
-    pub5 = rospy.Publisher('ekf_path', Path, queue_size=1)
-    pub6 = rospy.Publisher('mpc_path', Path, queue_size=1)
+    pub5 = rospy.Publisher('ekf_path', Path, queue_size = 1)
+    pub6 = rospy.Publisher('mpc_path', Path, queue_size = 1)
 
     set_arming = rospy.ServiceProxy('/mavros/cmd/arming', CommandBool)
     set_mode = rospy.ServiceProxy('/mavros/set_mode', SetMode)
@@ -380,7 +385,7 @@ def main():
             aruco_x = p.point.x
             aruco_y = p.point.y
             aruco_z = p.point.z
-            velocity_x_des, cached_var, diff = MPC_solver(aruco_x, -0.1, limit_x, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc=2, curr_vel=vel_x)
+            velocity_x_des, cached_var, diff = MPC_solver(aruco_x, 0, limit_x, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc=2, curr_vel=vel_x)
             x_array = cached_var.get("points")
             velocity_y_des, cached_var, _ = MPC_solver(aruco_y, 0, limit_y, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc=2, curr_vel=vel_y)
             y_array = cached_var.get("points")
@@ -396,8 +401,8 @@ def main():
             start_time = rospy.Time.now()
             print("----------------------------NOT SEEN------------------------------------")
 
-            velocity_x_des = 0
-            velocity_y_des = 0
+            velocity_x_des = 0.5
+            velocity_y_des = 0.5
             velocity_z_des = 0
         # print(p)
         
@@ -419,12 +424,12 @@ def main():
         data_timer = data_timer + delta_time
 
         if(data_timer > 0.1):
-            writer.writerow([rospy.get_time(), float(cart_x), float(cart_y), float(cart_z), float(vel_x), float(vel_y), float(vel_z), float(velocity_x_des), float(velocity_y_des), float(velocity_z_des)])
+            writer.writerow([rospy.get_time(), float(cart_x), float(cart_y), float(cart_z), float(vel_x), float(vel_y), float(vel_z), float(velocity_x_des), float(velocity_y_des), float(velocity_z_des), float(aruco_x), float(aruco_y)])
             data_timer = 0.
 
-        dist = sqrt((aruco_x+0.1)**2+(aruco_y)**2)#+(aruco_u)**2)
+        # dist = sqrt((aruco_x)**2+(aruco_y)**2)#+(aruco_u)**2)
 
-        if(dist < 0.1 and marker_found == True and cart_z < 1):
+        if(marker_found == True and cart_z < 0.5):
             velocity_x_des = velocity_y_des = 0
 
             print("Time to land:\t", hold_timer)
