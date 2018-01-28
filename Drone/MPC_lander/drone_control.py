@@ -1,4 +1,4 @@
-#!/usr/bin/python
+    #!/usr/bin/python
 
 from __future__ import print_function
 from os import sys, path
@@ -31,7 +31,7 @@ from MPC import MPC_solver
 global R
 global roll, pitch, yaw
 
-hz                                      = 20.0
+hz                                      = 10.0
 n                                       = 15
 t                                       = 1/hz
 print(t, hz)
@@ -74,7 +74,7 @@ gz_x = gz_y = gz_z = x_0 = y_0          = 0
 
 
 id_to_find          = 72
-marker_size         = 50
+marker_size         = 20
 cwd                 = path.dirname(path.abspath(__file__))
 calib_path          = cwd+"/../opencv/"
 camera_distortion   = np.loadtxt(calib_path+'cameraDistortion.txt', delimiter=',')                                      
@@ -261,8 +261,8 @@ def main():
     
     rate = rospy.Rate(hz)
 
-    aruco_tracker       = ArucoSingleTracker(id_to_find=id_to_find, marker_size=marker_size, show_video=True, 
-                camera_distortion=camera_distortion, camera_matrix=camera_matrix, simulation=False)
+    aruco_tracker       = ArucoSingleTracker(id_to_find=id_to_find, marker_size=marker_size, show_video=False, 
+                camera_distortion=camera_distortion, camera_matrix=camera_matrix, simulation=False, record_video=True)
 
     tf_buff = tf2_ros.Buffer()
     tf_listener = tf2_ros.TransformListener(tf_buff)
@@ -304,24 +304,30 @@ def main():
     data_timer = 0.
     hold_timer = 0.
 
-#    mavros.command.arming(True)
-#    if(cart_z < 1):
-#        # set_mode(0, 'GUIDED')
+    mavros.command.arming(True)
+    
+    set_mode(0, 'OFFBOARD')
+    
+    if(cart_z < 1):
+        # set_mode(0, 'GUIDED')
 
-#        # set_takeoff(0, 0, None, None, 10)
-#        set_mode(0, 'AUTO.TAKEOFF')
+        # set_takeoff(0, 0, None, None, 10)
+        set_mode(0, 'AUTO.TAKEOFF')
 
-#    while cart_z < 5: continue
+    while cart_z < 4.8: continue
 
     #contact force subscriber
     # rospy.Subscriber('/bumper_states', ContactsState, contact_cb)
 
-    for i in range(0, 10):
-        pub1.publish(twist_obj(0, 0, 0, 0.0, 0.0, 0.0))
-        time.sleep(0.01)
 
-#    set_mode(0, 'OFFBOARD')
+    # for i in range(0, 10):
+    #     pub1.publish(twist_obj(0, 0, 0, 0.0, 0.0, 0.0))
+        # time.sleep(0.1)
 
+    # set_mode(0, 'OFFBOARD')
+
+#    time.sleep(0.2)
+    
     while not rospy.is_shutdown():
         marker_found, x_cm, y_cm, z_cm, _ = aruco_tracker.track(loop=False)
 
@@ -351,9 +357,9 @@ def main():
             aruco_x = p.point.x
             aruco_y = p.point.y
             aruco_z = p.point.z
-            velocity_x_des, cached_var, diff = MPC_solver(aruco_x, 0, limit_x, 0, n, t, True, variables = cached_var, vel_limit = 0.1, acc=0.5, curr_vel=vel_x)
+            velocity_x_des, cached_var, diff = MPC_solver(aruco_x, 0, limit_x, 0, n, t, True, variables = cached_var, vel_limit = 0.1, acc=1, curr_vel=vel_x)
             x_array = cached_var.get("points")
-            velocity_y_des, cached_var, _ = MPC_solver(aruco_y, 0, limit_y, 0, n, t, True, variables = cached_var, vel_limit = 0.1, acc=0.5, curr_vel=vel_y)
+            velocity_y_des, cached_var, _ = MPC_solver(aruco_y, 0, limit_y, 0, n, t, True, variables = cached_var, vel_limit = 0.1, acc=1, curr_vel=vel_y)
             y_array = cached_var.get("points")
             velocity_z_des, cached_var, _ = MPC_solver(aruco_z, 0, limit_z, 0, n, t, True, variables = cached_var, vel_limit = 0.2, acc=0.2, curr_vel=vel_z, debug=True)
             z_array = cached_var.get("points")
@@ -367,12 +373,16 @@ def main():
             start_time = rospy.Time.now()
             print(start_time)
 
-            velocity_x_des = -0
+            velocity_x_des = 0
             velocity_y_des = 0
             velocity_z_des = 0
         # print(p)
         
-        # else:
+        else:
+            velocity_x_des = 0
+            velocity_y_des = 0
+            velocity_z_des = 0
+
         #     velocity_x_des, cached_var, diff = MPC_solver(cart_x, aruco_x, limit_x, 0, n, t, True, variables = cached_var, vel_limit = 100, acc=1, curr_vel=vel_x)
         #     x_array = cached_var.get("points")
         #     velocity_y_des, cached_var, _ = MPC_solver(cart_y, aruco_y, limit_y, 0, n, t, True, variables = cached_var, vel_limit = 100, acc=1, curr_vel=vel_y)
@@ -391,14 +401,12 @@ def main():
 
         dist = sqrt((aruco_x)**2+(aruco_y)**2)#+(aruco_u)**2)
 
-        if(dist < 0.25 and marker_found == True and cart_z < 3.5):
-            hold_timer = hold_timer + delta_time
-
+        if(dist < 0.25 and marker_found == True and cart_z < 2):
             velocity_x_des = velocity_y_des = 0
 
             print("Time to land:\t", hold_timer)
             # if(hold_timer > 3):
-            set_mode('AUTO.LAND')
+            set_mode(0, 'AUTO.LAND')
             csvfile.close()
 
             sys.exit()
@@ -482,6 +490,11 @@ def main():
             if cont > max_append and len(path.poses) != 0 and len(ekf_path.poses):
                     path.poses.pop(0)
                     ekf_path.poses.pop(0)
+
+        hold_timer = hold_timer + delta_time
+        
+        if(hold_timer < 0.2):
+            set_mode(0, 'OFFBOARD')
 
         rate.sleep()
 

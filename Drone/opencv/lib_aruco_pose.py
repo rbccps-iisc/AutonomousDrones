@@ -54,7 +54,7 @@ class ArucoSingleTracker():
                 camera_size=[640,480],
                 show_video=False,
                 simulation=False,
-                record_video=False
+                record_video=True
                 ):
         
         #rospy.init_node('cam_capture')
@@ -103,7 +103,7 @@ class ArucoSingleTracker():
         self.fps_detect  = 0.0    
 
         file_str = str(datetime.now().year) + '_' + str(datetime.now().month) + '_' + str(datetime.now().day) + '_' + str(datetime.now().hour) + '_' + str(datetime.now().minute) + '.avi'
-#        self.out = cv2.VideoWriter(file_str,cv2.VideoWriter_fourcc('X','V','I','D'), 10, (self.camera_size[0],self.camera_size[1]))
+        self.out = cv2.VideoWriter(file_str,cv2.VideoWriter_fourcc('X','V','I','D'), 20, (self.camera_size[0],self.camera_size[1]))
 
     def imageCb(self, msg):
         self.frame = self.bridge.imgmsg_to_cv2(msg, "bgr8")
@@ -208,7 +208,7 @@ class ArucoSingleTracker():
                 # print "Camera X = %.1f  Y = %.1f  Z = %.1f  - fps = %.0f"%(pos_camera[0], pos_camera[1], pos_camera[2],fps_detect)
                 if verbose: print("Marker X = %.1f  Y = %.1f  Z = %.1f  - fps = %.0f"%(tvec[0], tvec[1], tvec[2],self.fps_detect))
 
-                if show_video:
+                if show_video or self.record_video:
                     aruco.drawDetectedMarkers(frame, corners)
                     aruco.drawAxis(frame, self._camera_matrix, self._camera_distortion, rvec, tvec, 10)
 
@@ -242,19 +242,15 @@ class ArucoSingleTracker():
                 #cv2.imwrite(file,)
                 cv2.imshow('frame', frame_new)
 
-                if self.record_video:
-                    if ret_vid == True:
-                        #frame = cv2.flip(frame,0)
-                        self.out.write(frame)
-
                         #--- use 'q' to quit
                 key = cv2.waitKey(1) & 0xFF
                 if key == ord('q'):
                     self._cap.release()
                     cv2.destroyAllWindows()
 
+            if self.record_video and ret_vid == True:
+                self.out.write(frame)
 
-            
             if not loop: return(marker_found, x, y, z, corners)
             
 if __name__ == "__main__":
