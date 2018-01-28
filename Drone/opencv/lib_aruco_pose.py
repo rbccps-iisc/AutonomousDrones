@@ -89,7 +89,7 @@ class ArucoSingleTracker():
         self._parameters  = aruco.DetectorParameters_create()
 
         #--- Capture the videocamera (this may also be a video or a picture)
-        self._cap = cv2.VideoCapture(0)
+        self._cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
         #-- Set the camera size as the one it was calibrated with
         self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, camera_size[0])
         self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_size[1])
@@ -103,7 +103,7 @@ class ArucoSingleTracker():
         self.fps_detect  = 0.0    
 
         file_str = str(datetime.now().year) + '_' + str(datetime.now().month) + '_' + str(datetime.now().day) + '_' + str(datetime.now().hour) + '_' + str(datetime.now().minute) + '.avi'
-        self.out = cv2.VideoWriter(file_str,cv2.VideoWriter_fourcc('X','V','I','D'), 10, (self.camera_size[0],self.camera_size[1]))
+#        self.out = cv2.VideoWriter(file_str,cv2.VideoWriter_fourcc('X','V','I','D'), 10, (self.camera_size[0],self.camera_size[1]))
 
     def imageCb(self, msg):
         self.frame = self.bridge.imgmsg_to_cv2(msg, "bgr8")
@@ -149,7 +149,7 @@ class ArucoSingleTracker():
     def stop(self):
         self._kill = True
 
-    def track(self, loop=True, verbose=False, show_video=None):
+    def track(self, loop=True, verbose=True, show_video=None):
         self._kill = False
         if show_video is None: show_video = self._show_video
         
@@ -264,11 +264,10 @@ if __name__ == "__main__":
     marker_size  = 20 #- [cm]
 
     #--- Get the camera calibration path
-    calib_path  = ""
+    calib_path  = "./"
     camera_matrix   = np.loadtxt(calib_path+'cameraMatrix.txt', delimiter=',')
     camera_distortion   = np.loadtxt(calib_path+'cameraDistortion.txt', delimiter=',')                                      
-    aruco_tracker = ArucoSingleTracker(id_to_find=id_to_find, marker_size=marker_size, show_video=False, camera_matrix=camera_matrix, camera_distortion=camera_distortion)
+    aruco_tracker = ArucoSingleTracker(id_to_find=id_to_find, marker_size=marker_size, show_video=True, camera_matrix=camera_matrix, camera_distortion=camera_distortion)
     
-    aruco_tracker.track(verbose=True)
-    # aruco_tracker.track(loop = False)
+    aruco_tracker.track(loop = True)
 

@@ -21,7 +21,7 @@ from nav_msgs.msg import Path, Odometry
 from visualization_msgs.msg import Marker
 from math import pow, sqrt
 
-from gazebo_msgs.msg import ModelStates, ContactsState
+#from gazebo_msgs.msg import ModelStates, ContactsState
 
 from sensor_msgs.msg import Imu, NavSatFix
 from tf.transformations import euler_from_quaternion
@@ -271,8 +271,8 @@ def main():
     # rospy.Subscriber("/mavros/altitude", Altitude, alt_cb)
     rospy.Subscriber("/mavros/global_position/local", Odometry, gps_local_cb)
     rospy.Subscriber("/mavros/local_position/pose", PoseStamped, pose_cb)
-    rospy.Subscriber("/move_base_simple/goal", PoseStamped, calc_target_cb)
-    rospy.Subscriber("/gazebo/model_states", ModelStates, get_pos_cb)
+#    rospy.Subscriber("/move_base_simple/goal", PoseStamped, calc_target_cb)
+#    rospy.Subscriber("/gazebo/model_states", ModelStates, get_pos_cb)
     rospy.Subscriber("/mavros/local_position/velocity_local", TwistStamped, velocity_cb)
     rospy.Subscriber("/mavros/state", State, armed_cb)
 
@@ -304,14 +304,14 @@ def main():
     data_timer = 0.
     hold_timer = 0.
 
-    mavros.command.arming(True)
-    if(cart_z < 1):
-        # set_mode(0, 'GUIDED')
+#    mavros.command.arming(True)
+#    if(cart_z < 1):
+#        # set_mode(0, 'GUIDED')
 
-        # set_takeoff(0, 0, None, None, 10)
-        set_mode(0, 'AUTO.TAKEOFF')
+#        # set_takeoff(0, 0, None, None, 10)
+#        set_mode(0, 'AUTO.TAKEOFF')
 
-    while cart_z < 9: continue
+#    while cart_z < 5: continue
 
     #contact force subscriber
     # rospy.Subscriber('/bumper_states', ContactsState, contact_cb)
@@ -320,7 +320,7 @@ def main():
         pub1.publish(twist_obj(0, 0, 0, 0.0, 0.0, 0.0))
         time.sleep(0.01)
 
-    set_mode(0, 'OFFBOARD')
+#    set_mode(0, 'OFFBOARD')
 
     while not rospy.is_shutdown():
         marker_found, x_cm, y_cm, z_cm, _ = aruco_tracker.track(loop=False)
@@ -355,7 +355,7 @@ def main():
             x_array = cached_var.get("points")
             velocity_y_des, cached_var, _ = MPC_solver(aruco_y, 0, limit_y, 0, n, t, True, variables = cached_var, vel_limit = 0.1, acc=0.5, curr_vel=vel_y)
             y_array = cached_var.get("points")
-            velocity_z_des, cached_var, _ = MPC_solver(aruco_z, 0, limit_z, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc=0.2, curr_vel=vel_z, debug=True)
+            velocity_z_des, cached_var, _ = MPC_solver(aruco_z, 0, limit_z, 0, n, t, True, variables = cached_var, vel_limit = 0.2, acc=0.2, curr_vel=vel_z, debug=True)
             z_array = cached_var.get("points")
             mpc_point_arr = np.transpose(np.row_stack((x_array, y_array, z_array)))
 
@@ -367,7 +367,7 @@ def main():
             start_time = rospy.Time.now()
             print(start_time)
 
-            velocity_x_des = -1.5
+            velocity_x_des = -0
             velocity_y_des = 0
             velocity_z_des = 0
         # print(p)
@@ -391,7 +391,7 @@ def main():
 
         dist = sqrt((aruco_x)**2+(aruco_y)**2)#+(aruco_u)**2)
 
-        if(dist < 0.25 and marker_found == True and cart_z < 2):
+        if(dist < 0.25 and marker_found == True and cart_z < 3.5):
             hold_timer = hold_timer + delta_time
 
             velocity_x_des = velocity_y_des = 0
