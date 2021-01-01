@@ -1,3 +1,9 @@
+#!/usr/bin/env python3
+
+# This script is a test code to check the simulation of multiple drones on Gazebo using mavros commands.
+# running this code using python3 should cause all 3 drones in gazebo to takeoff simultaneously and hover at a height of 5m.
+# Usage - python3 test_takeoff.py
+
 from os import sys, path
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 

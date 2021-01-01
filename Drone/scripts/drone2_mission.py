@@ -1,3 +1,10 @@
+#!/usr/bin/env python3
+
+# Code to control drone2
+# running this code should cause all drone2 to takeoff simultaneously and hover at a height of 5m
+# Usage - python3 drone2_mission.py
+
+
 from os import sys, path
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 

@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # This program is a serves as a rosnode which initializes the pose of the multiple drones in an open gazebo_ros node 
-# Usage - rosrun scripts random_location_aruco.py
+# Usage - rosrun scripts drones_init_pos.py
 
 import rospy
 from gazebo_msgs.msg import ModelState, ModelStates
