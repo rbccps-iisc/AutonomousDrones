@@ -55,7 +55,8 @@ In order to support a multi-drone framework, we need to make some additional cha
   * The launch files used for using these models in gazebo is located in [launch files](https://github.com/rbccps-iisc/AutonomousDrones/tree/master/launch)
   
 * Scripts
-  * The scripts for running simulations is located in [scripts](https://github.com/rbccps-iisc/AutonomousDrones/tree/master/Drone/scripts)  
+  * The scripts for running simulations are located in [scripts](https://github.com/rbccps-iisc/AutonomousDrones/tree/master/Simulation/scripts)  
+  * The scripts for running on the drone's on-board computer are located in [scripts](https://github.com/rbccps-iisc/AutonomousDrones/tree/master/Drone/scripts)  
   * Description of the functionality of each script in this directory is mentioned as a comment at the beginning of the script file.  
  
 ## Simulation Usage - 
@@ -74,11 +75,22 @@ Run each of the following steps in separate terminals -
 	
 4. start QGC:  
 	> $ ./QGroundControl.AppImage  
-	* In QGC, navigate to the settings tab and click on Comm Links. Then, connect all three vehicles.    
+	* In QGC, navigate to the settings tab and click on Comm Links. Then, connect all three vehicles.  
 	
-5. Running Scripts:
-	> $ cd ~/catkin_proj/src/AutonomousDrones/Drone/scripts  
-	> $ python3 test_takeoff.py
+5. Running Scripts:  
+	* Terminal 1  
+		> $ cd ~/catkin_proj/src/AutonomousDrones/Simulation/scripts   
+		> $ python3 drone1_mission.py  
+	* Terminal 2  
+		> $ cd ~/catkin_proj/src/AutonomousDrones/Simulation/scripts   
+		> $ python3 drone2_mission.py  
+	* Terminal 3  
+		> $ cd ~/catkin_proj/src/AutonomousDrones/Simulation/scripts   
+		> $ python3 drone3_mission.py  
+	* Terminal 4  
+		> $ cd ~/catkin_proj/src/AutonomousDrones/Simulation/scripts   
+		> $ python3 gcs_control.py    
+
 	
 
 
