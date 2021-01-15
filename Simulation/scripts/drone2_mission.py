@@ -459,7 +459,7 @@ def drone_bat():
 				bat = bat - 5
 			else:
 				bat = 0
-		if not armed and counter%5==0:
+		if not armed and counter%1==0:
 			if bat<100:
 				bat = bat + 5
 			else:
@@ -481,9 +481,9 @@ if __name__ == '__main__':
 	parser.add_argument('--home_lat', default=13.0272048)				#GPS Latitude coordinate of home location in Current Airfield
 	parser.add_argument('--home_lon', default=77.563607)				#GPS Longitude coordinate of home location in Current Airfield
 	parser.add_argument('--home_alt', default=915.0)					#Altitude of home location in Current Airfield
-	parser.add_argument('--toh', default=8, type=int)					#Desired Takeoff height for mission
-	parser.add_argument('--surveillance_dis_x', default=5, type=int)	#Distance to cover from home location, in both North and South direction (in meters)
-	parser.add_argument('--surveillance_dis_y', default=5, type=int)	#Distance to cover from home location, in both East and West direction (in meters)
+	parser.add_argument('--toh', default=6, type=int)					#Desired Takeoff height for mission
+	parser.add_argument('--surveillance_dis_x', default=6, type=int)	#Distance to cover from home location, in both North and South direction (in meters)
+	parser.add_argument('--surveillance_dis_y', default=6, type=int)	#Distance to cover from home location, in both East and West direction (in meters)
 	parser.add_argument('--safe_bat',default=80, type=int)				#Minimum safe battery level to authorize takeoff (percentage)
 	parser.add_argument('--low_bat', default=60, type=int)				#Low battery level (percentage)
 	parser.add_argument('--critical_bat', default=40, type=int)			#Critical battery level (percentage)

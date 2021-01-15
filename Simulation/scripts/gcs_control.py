@@ -154,6 +154,7 @@ def main():
 					cmd.height =  1.5 * robot[0].cur_alt
 					cmd.yaw = robot[0].yaw
 					mission_height = robot[0].cur_alt
+					mission_waypoint = robot[0].waypoint
 					pub_cmd.publish(cmd)
 					time.sleep(1)
 
@@ -168,7 +169,6 @@ def main():
 					cmd.lon = robot[0].cur_lon
 					cmd.height = mission_height
 					cmd.yaw = robot[0].yaw
-					cmd.waypoint = robot[0].waypoint
 					pub_cmd.publish(cmd)
 					time.sleep(1)
 
@@ -184,6 +184,7 @@ def main():
 			
 					if robot[1].armed:
 						cmd.command = 'drone2 do mission'
+						cmd.waypoint = mission_waypoint
 						pub_cmd.publish(cmd)
 						time.sleep(1)
 			
@@ -201,7 +202,9 @@ def main():
 					cmd.lat = robot[1].cur_lat
 					cmd.lon = robot[1].cur_lon
 					cmd.height =  1.5 * robot[1].cur_alt
+					cmd.yaw = robot[1].yaw
 					mission_height = robot[1].cur_alt
+					mission_waypoint = robot[1].waypoint
 					pub_cmd.publish(cmd)
 					time.sleep(1)
 
@@ -216,7 +219,6 @@ def main():
 					cmd.lon = robot[1].cur_lon
 					cmd.height = mission_height
 					cmd.yaw = robot[1].yaw
-					cmd.waypoint = robot[1].waypoint
 					pub_cmd.publish(cmd)
 					time.sleep(1)
 
@@ -232,6 +234,7 @@ def main():
 			
 					if robot[1].armed:
 						cmd.command = 'drone1 do mission'
+						cmd.waypoint = mission_waypoint
 						pub_cmd.publish(cmd)
 						time.sleep(1)
 			
