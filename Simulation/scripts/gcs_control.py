@@ -173,8 +173,6 @@ def main():
 					time.sleep(1)
 
 					while abs(robot[1].cur_x - robot[0].cur_x) >= 0.3 and abs(robot[1].cur_y - robot[0].cur_y) >= 0.3 :
-						print(abs(robot[1].cur_x - robot[0].cur_x))
-						print(abs(robot[1].cur_y - robot[0].cur_y))
 						cmd.command = 'none'
 						pub_cmd.publish(cmd)
 						time.sleep(1)
