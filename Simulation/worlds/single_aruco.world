@@ -2,7 +2,7 @@
   <world name='default'>
     <gui fullscreen='0'>
       <camera name='user_camera'>
-        <pose frame=''>-17.478 -1.08429 5.52248 -0 0.12679 -0.04641</pose>
+        <pose frame=''>-0.568222 -16.4311 12.9317 -0 0.630791 1.40558</pose>
         <view_controller>orbit</view_controller>
         <projection_type>perspective</projection_type>
       </camera>
@@ -22,7 +22,7 @@
           <contact_surface_layer>0</contact_surface_layer>
         </constraints>
       </ode>
-      <real_time_update_rate>-1</real_time_update_rate>
+      <real_time_update_rate>1000</real_time_update_rate>
       <max_step_size>0.001</max_step_size>
       <real_time_factor>1</real_time_factor>
     </physics>
@@ -40,70 +40,6 @@
       </attenuation>
       <direction>-0.5 0.1 -0.9</direction>
     </light>
-    <model name='ground_plane'>
-      <static>1</static>
-      <link name='link'>
-        <collision name='collision'>
-          <geometry>
-            <plane>
-              <normal>0 0 1</normal>
-              <size>5000 5000</size>
-            </plane>
-          </geometry>
-          <surface>
-            <friction>
-              <ode>
-                <mu>100</mu>
-                <mu2>50</mu2>
-              </ode>
-              <torsional>
-                <ode/>
-              </torsional>
-            </friction>
-            <contact>
-              <ode/>
-            </contact>
-            <bounce/>
-          </surface>
-          <max_contacts>10</max_contacts>
-        </collision>
-        <visual name='runway'>
-          <pose frame=''>0 0 0.005 0 -0 0</pose>
-          <cast_shadows>0</cast_shadows>
-          <geometry>
-            <plane>
-              <normal>0 0 1</normal>
-              <size>1829 45</size>
-            </plane>
-          </geometry>
-          <material>
-            <script>
-              <uri>file://media/materials/scripts/gazebo.material</uri>
-              <name>Gazebo/Runway</name>
-            </script>
-          </material>
-        </visual>
-        <visual name='grass'>
-          <pose frame=''>0 0 -0.1 0 -0 0</pose>
-          <cast_shadows>0</cast_shadows>
-          <geometry>
-            <plane>
-              <normal>0 0 1</normal>
-              <size>5000 5000</size>
-            </plane>
-          </geometry>
-          <material>
-            <script>
-              <uri>file://media/materials/scripts/gazebo.material</uri>
-              <name>Gazebo/Grass</name>
-            </script>
-          </material>
-        </visual>
-        <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
-      </link>
-    </model>
     <model name='iris_demo_9002'>
       <link name='iris::base_link'>
         <velocity_decay>
@@ -3155,1222 +3091,22 @@
       <elevation>0</elevation>
       <heading_deg>0</heading_deg>
     </spherical_coordinates>
-    <model name='pine_tree_big'>
-      <link name='link'>
-        <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
-        <pose frame=''>0 0 0 0 -0 0</pose>
-        <gravity>1</gravity>
-        <inertial>
-          <mass>1</mass>
-          <pose frame=''>0 0 0 0 -0 0</pose>
-          <inertia>
-            <ixx>1</ixx>
-            <ixy>0</ixy>
-            <ixz>0</ixz>
-            <iyy>1</iyy>
-            <iyz>0</iyz>
-            <izz>1</izz>
-          </inertia>
-        </inertial>
-        <visual name='bark'>
-          <geometry>
-            <mesh>
-              <uri>model://pine_tree/meshes/pine_tree.dae</uri>
-              <submesh>
-                <name>Bark</name>
-              </submesh>
-              <scale>3 3 3</scale>
-            </mesh>
-          </geometry>
-          <material>
-            <script>
-              <uri>model://pine_tree/materials/scripts/</uri>
-              <uri>model://pine_tree/materials/textures/</uri>
-              <name>PineTree/Bark</name>
-            </script>
-            <shader type='pixel'>
-              <normal_map>__default__</normal_map>
-            </shader>
-            <ambient>1 1 1 1</ambient>
-            <diffuse>1 1 1 1</diffuse>
-            <specular>0 0 0 1</specular>
-            <emissive>0 0 0 1</emissive>
-          </material>
-          <pose frame=''>0 0 0 0 -0 0</pose>
-          <transparency>0</transparency>
-          <cast_shadows>1</cast_shadows>
-        </visual>
-        <visual name='branch'>
-          <geometry>
-            <mesh>
-              <uri>model://pine_tree/meshes/pine_tree.dae</uri>
-              <submesh>
-                <name>Branch</name>
-              </submesh>
-              <scale>3 3 3</scale>
-            </mesh>
-          </geometry>
-          <material>
-            <script>
-              <uri>model://pine_tree/materials/scripts/</uri>
-              <uri>model://pine_tree/materials/textures/</uri>
-              <name>PineTree/Branch</name>
-            </script>
-            <shader type='pixel'>
-              <normal_map>__default__</normal_map>
-            </shader>
-            <ambient>1 1 1 1</ambient>
-            <diffuse>1 1 1 1</diffuse>
-            <specular>0 0 0 1</specular>
-            <emissive>0 0 0 1</emissive>
-          </material>
-          <pose frame=''>0 0 0 0 -0 0</pose>
-          <transparency>0</transparency>
-          <cast_shadows>1</cast_shadows>
-        </visual>
-        <collision name='collision'>
-          <laser_retro>0</laser_retro>
-          <max_contacts>10</max_contacts>
-          <pose frame=''>0 0 0 0 -0 0</pose>
-          <geometry>
-            <mesh>
-              <uri>model://pine_tree/meshes/pine_tree.dae</uri>
-              <scale>3 3 3</scale>
-            </mesh>
-          </geometry>
-          <surface>
-            <friction>
-              <ode>
-                <mu>1</mu>
-                <mu2>1</mu2>
-                <fdir1>0 0 0</fdir1>
-                <slip1>0</slip1>
-                <slip2>0</slip2>
-              </ode>
-              <torsional>
-                <coefficient>1</coefficient>
-                <patch_radius>0</patch_radius>
-                <surface_radius>0</surface_radius>
-                <use_patch_radius>1</use_patch_radius>
-                <ode>
-                  <slip>0</slip>
-                </ode>
-              </torsional>
-            </friction>
-            <bounce>
-              <restitution_coefficient>0</restitution_coefficient>
-              <threshold>1e+06</threshold>
-            </bounce>
-            <contact>
-              <collide_without_contact>0</collide_without_contact>
-              <collide_without_contact_bitmask>1</collide_without_contact_bitmask>
-              <collide_bitmask>1</collide_bitmask>
-              <ode>
-                <soft_cfm>0</soft_cfm>
-                <soft_erp>0.2</soft_erp>
-                <kp>1e+13</kp>
-                <kd>1</kd>
-                <max_vel>0.01</max_vel>
-                <min_depth>0</min_depth>
-              </ode>
-              <bullet>
-                <split_impulse>1</split_impulse>
-                <split_impulse_penetration_threshold>-0.01</split_impulse_penetration_threshold>
-                <soft_cfm>0</soft_cfm>
-                <soft_erp>0.2</soft_erp>
-                <kp>1e+13</kp>
-                <kd>1</kd>
-              </bullet>
-            </contact>
-          </surface>
-        </collision>
-      </link>
-      <static>1</static>
-      <allow_auto_disable>1</allow_auto_disable>
-      <pose frame=''>-3.8576 86.4016 0 0 -0 0</pose>
-    </model>
-    <model name='pine_tree_big_0'>
-      <link name='link'>
-        <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
-        <pose frame=''>0 0 0 0 -0 0</pose>
-        <gravity>1</gravity>
-        <inertial>
-          <mass>1</mass>
-          <pose frame=''>0 0 0 0 -0 0</pose>
-          <inertia>
-            <ixx>1</ixx>
-            <ixy>0</ixy>
-            <ixz>0</ixz>
-            <iyy>1</iyy>
-            <iyz>0</iyz>
-            <izz>1</izz>
-          </inertia>
-        </inertial>
-        <visual name='bark'>
-          <geometry>
-            <mesh>
-              <uri>model://pine_tree/meshes/pine_tree.dae</uri>
-              <submesh>
-                <name>Bark</name>
-              </submesh>
-              <scale>3 3 3</scale>
-            </mesh>
-          </geometry>
-          <material>
-            <script>
-              <uri>model://pine_tree/materials/scripts/</uri>
-              <uri>model://pine_tree/materials/textures/</uri>
-              <name>PineTree/Bark</name>
-            </script>
-            <shader type='pixel'>
-              <normal_map>__default__</normal_map>
-            </shader>
-            <ambient>1 1 1 1</ambient>
-            <diffuse>1 1 1 1</diffuse>
-            <specular>0 0 0 1</specular>
-            <emissive>0 0 0 1</emissive>
-          </material>
-          <pose frame=''>0 0 0 0 -0 0</pose>
-          <transparency>0</transparency>
-          <cast_shadows>1</cast_shadows>
-        </visual>
-        <visual name='branch'>
-          <geometry>
-            <mesh>
-              <uri>model://pine_tree/meshes/pine_tree.dae</uri>
-              <submesh>
-                <name>Branch</name>
-              </submesh>
-              <scale>3 3 3</scale>
-            </mesh>
-          </geometry>
-          <material>
-            <script>
-              <uri>model://pine_tree/materials/scripts/</uri>
-              <uri>model://pine_tree/materials/textures/</uri>
-              <name>PineTree/Branch</name>
-            </script>
-            <shader type='pixel'>
-              <normal_map>__default__</normal_map>
-            </shader>
-            <ambient>1 1 1 1</ambient>
-            <diffuse>1 1 1 1</diffuse>
-            <specular>0 0 0 1</specular>
-            <emissive>0 0 0 1</emissive>
-          </material>
-          <pose frame=''>0 0 0 0 -0 0</pose>
-          <transparency>0</transparency>
-          <cast_shadows>1</cast_shadows>
-        </visual>
-        <collision name='collision'>
-          <laser_retro>0</laser_retro>
-          <max_contacts>10</max_contacts>
-          <pose frame=''>0 0 0 0 -0 0</pose>
-          <geometry>
-            <mesh>
-              <uri>model://pine_tree/meshes/pine_tree.dae</uri>
-              <scale>3 3 3</scale>
-            </mesh>
-          </geometry>
-          <surface>
-            <friction>
-              <ode>
-                <mu>1</mu>
-                <mu2>1</mu2>
-                <fdir1>0 0 0</fdir1>
-                <slip1>0</slip1>
-                <slip2>0</slip2>
-              </ode>
-              <torsional>
-                <coefficient>1</coefficient>
-                <patch_radius>0</patch_radius>
-                <surface_radius>0</surface_radius>
-                <use_patch_radius>1</use_patch_radius>
-                <ode>
-                  <slip>0</slip>
-                </ode>
-              </torsional>
-            </friction>
-            <bounce>
-              <restitution_coefficient>0</restitution_coefficient>
-              <threshold>1e+06</threshold>
-            </bounce>
-            <contact>
-              <collide_without_contact>0</collide_without_contact>
-              <collide_without_contact_bitmask>1</collide_without_contact_bitmask>
-              <collide_bitmask>1</collide_bitmask>
-              <ode>
-                <soft_cfm>0</soft_cfm>
-                <soft_erp>0.2</soft_erp>
-                <kp>1e+13</kp>
-                <kd>1</kd>
-                <max_vel>0.01</max_vel>
-                <min_depth>0</min_depth>
-              </ode>
-              <bullet>
-                <split_impulse>1</split_impulse>
-                <split_impulse_penetration_threshold>-0.01</split_impulse_penetration_threshold>
-                <soft_cfm>0</soft_cfm>
-                <soft_erp>0.2</soft_erp>
-                <kp>1e+13</kp>
-                <kd>1</kd>
-              </bullet>
-            </contact>
-          </surface>
-        </collision>
-      </link>
-      <static>1</static>
-      <allow_auto_disable>1</allow_auto_disable>
-      <pose frame=''>3.01546 85.8319 0 0 -0 0</pose>
-    </model>
-    <model name='pine_tree_big_1'>
-      <link name='link'>
-        <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
-        <pose frame=''>0 0 0 0 -0 0</pose>
-        <gravity>1</gravity>
-        <inertial>
-          <mass>1</mass>
-          <pose frame=''>0 0 0 0 -0 0</pose>
-          <inertia>
-            <ixx>1</ixx>
-            <ixy>0</ixy>
-            <ixz>0</ixz>
-            <iyy>1</iyy>
-            <iyz>0</iyz>
-            <izz>1</izz>
-          </inertia>
-        </inertial>
-        <visual name='bark'>
-          <geometry>
-            <mesh>
-              <uri>model://pine_tree/meshes/pine_tree.dae</uri>
-              <submesh>
-                <name>Bark</name>
-              </submesh>
-              <scale>3 3 3</scale>
-            </mesh>
-          </geometry>
-          <material>
-            <script>
-              <uri>model://pine_tree/materials/scripts/</uri>
-              <uri>model://pine_tree/materials/textures/</uri>
-              <name>PineTree/Bark</name>
-            </script>
-            <shader type='pixel'>
-              <normal_map>__default__</normal_map>
-            </shader>
-            <ambient>1 1 1 1</ambient>
-            <diffuse>1 1 1 1</diffuse>
-            <specular>0 0 0 1</specular>
-            <emissive>0 0 0 1</emissive>
-          </material>
-          <pose frame=''>0 0 0 0 -0 0</pose>
-          <transparency>0</transparency>
-          <cast_shadows>1</cast_shadows>
-        </visual>
-        <visual name='branch'>
-          <geometry>
-            <mesh>
-              <uri>model://pine_tree/meshes/pine_tree.dae</uri>
-              <submesh>
-                <name>Branch</name>
-              </submesh>
-              <scale>3 3 3</scale>
-            </mesh>
-          </geometry>
-          <material>
-            <script>
-              <uri>model://pine_tree/materials/scripts/</uri>
-              <uri>model://pine_tree/materials/textures/</uri>
-              <name>PineTree/Branch</name>
-            </script>
-            <shader type='pixel'>
-              <normal_map>__default__</normal_map>
-            </shader>
-            <ambient>1 1 1 1</ambient>
-            <diffuse>1 1 1 1</diffuse>
-            <specular>0 0 0 1</specular>
-            <emissive>0 0 0 1</emissive>
-          </material>
-          <pose frame=''>0 0 0 0 -0 0</pose>
-          <transparency>0</transparency>
-          <cast_shadows>1</cast_shadows>
-        </visual>
-        <collision name='collision'>
-          <laser_retro>0</laser_retro>
-          <max_contacts>10</max_contacts>
-          <pose frame=''>0 0 0 0 -0 0</pose>
-          <geometry>
-            <mesh>
-              <uri>model://pine_tree/meshes/pine_tree.dae</uri>
-              <scale>3 3 3</scale>
-            </mesh>
-          </geometry>
-          <surface>
-            <friction>
-              <ode>
-                <mu>1</mu>
-                <mu2>1</mu2>
-                <fdir1>0 0 0</fdir1>
-                <slip1>0</slip1>
-                <slip2>0</slip2>
-              </ode>
-              <torsional>
-                <coefficient>1</coefficient>
-                <patch_radius>0</patch_radius>
-                <surface_radius>0</surface_radius>
-                <use_patch_radius>1</use_patch_radius>
-                <ode>
-                  <slip>0</slip>
-                </ode>
-              </torsional>
-            </friction>
-            <bounce>
-              <restitution_coefficient>0</restitution_coefficient>
-              <threshold>1e+06</threshold>
-            </bounce>
-            <contact>
-              <collide_without_contact>0</collide_without_contact>
-              <collide_without_contact_bitmask>1</collide_without_contact_bitmask>
-              <collide_bitmask>1</collide_bitmask>
-              <ode>
-                <soft_cfm>0</soft_cfm>
-                <soft_erp>0.2</soft_erp>
-                <kp>1e+13</kp>
-                <kd>1</kd>
-                <max_vel>0.01</max_vel>
-                <min_depth>0</min_depth>
-              </ode>
-              <bullet>
-                <split_impulse>1</split_impulse>
-                <split_impulse_penetration_threshold>-0.01</split_impulse_penetration_threshold>
-                <soft_cfm>0</soft_cfm>
-                <soft_erp>0.2</soft_erp>
-                <kp>1e+13</kp>
-                <kd>1</kd>
-              </bullet>
-            </contact>
-          </surface>
-        </collision>
-      </link>
-      <static>1</static>
-      <allow_auto_disable>1</allow_auto_disable>
-      <pose frame=''>11.2973 86.8482 0 0 -0 0</pose>
-    </model>
-    <model name='oak_tree_big'>
-      <link name='link'>
-        <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
-        <pose frame=''>0 0 0 0 -0 0</pose>
-        <gravity>1</gravity>
-        <inertial>
-          <mass>1</mass>
-          <pose frame=''>0 0 0 0 -0 0</pose>
-          <inertia>
-            <ixx>1</ixx>
-            <ixy>0</ixy>
-            <ixz>0</ixz>
-            <iyy>1</iyy>
-            <iyz>0</iyz>
-            <izz>1</izz>
-          </inertia>
-        </inertial>
-        <visual name='bark'>
-          <geometry>
-            <mesh>
-              <uri>model://oak_tree/meshes/oak_tree.dae</uri>
-              <submesh>
-                <name>Bark</name>
-              </submesh>
-              <scale>3 3 3</scale>
-            </mesh>
-          </geometry>
-          <material>
-            <script>
-              <uri>model://oak_tree/materials/scripts/</uri>
-              <uri>model://oak_tree/materials/textures/</uri>
-              <name>OakTree/Bark</name>
-            </script>
-            <shader type='pixel'>
-              <normal_map>__default__</normal_map>
-            </shader>
-            <ambient>1 1 1 1</ambient>
-            <diffuse>1 1 1 1</diffuse>
-            <specular>0 0 0 1</specular>
-            <emissive>0 0 0 1</emissive>
-          </material>
-          <pose frame=''>0 0 0 0 -0 0</pose>
-          <transparency>0</transparency>
-          <cast_shadows>1</cast_shadows>
-        </visual>
-        <visual name='branch'>
-          <geometry>
-            <mesh>
-              <uri>model://oak_tree/meshes/oak_tree.dae</uri>
-              <submesh>
-                <name>Branch</name>
-              </submesh>
-              <scale>3 3 3</scale>
-            </mesh>
-          </geometry>
-          <material>
-            <script>
-              <uri>model://oak_tree/materials/scripts/</uri>
-              <uri>model://oak_tree/materials/textures/</uri>
-              <name>OakTree/Branch</name>
-            </script>
-            <shader type='pixel'>
-              <normal_map>__default__</normal_map>
-            </shader>
-            <ambient>1 1 1 1</ambient>
-            <diffuse>1 1 1 1</diffuse>
-            <specular>0 0 0 1</specular>
-            <emissive>0 0 0 1</emissive>
-          </material>
-          <pose frame=''>0 0 0 0 -0 0</pose>
-          <transparency>0</transparency>
-          <cast_shadows>1</cast_shadows>
-        </visual>
-        <collision name='collision'>
-          <laser_retro>0</laser_retro>
-          <max_contacts>10</max_contacts>
-          <pose frame=''>0 0 0 0 -0 0</pose>
-          <geometry>
-            <mesh>
-              <uri>model://oak_tree/meshes/oak_tree.dae</uri>
-              <scale>3 3 3</scale>
-            </mesh>
-          </geometry>
-          <surface>
-            <friction>
-              <ode>
-                <mu>1</mu>
-                <mu2>1</mu2>
-                <fdir1>0 0 0</fdir1>
-                <slip1>0</slip1>
-                <slip2>0</slip2>
-              </ode>
-              <torsional>
-                <coefficient>1</coefficient>
-                <patch_radius>0</patch_radius>
-                <surface_radius>0</surface_radius>
-                <use_patch_radius>1</use_patch_radius>
-                <ode>
-                  <slip>0</slip>
-                </ode>
-              </torsional>
-            </friction>
-            <bounce>
-              <restitution_coefficient>0</restitution_coefficient>
-              <threshold>1e+06</threshold>
-            </bounce>
-            <contact>
-              <collide_without_contact>0</collide_without_contact>
-              <collide_without_contact_bitmask>1</collide_without_contact_bitmask>
-              <collide_bitmask>1</collide_bitmask>
-              <ode>
-                <soft_cfm>0</soft_cfm>
-                <soft_erp>0.2</soft_erp>
-                <kp>1e+13</kp>
-                <kd>1</kd>
-                <max_vel>0.01</max_vel>
-                <min_depth>0</min_depth>
-              </ode>
-              <bullet>
-                <split_impulse>1</split_impulse>
-                <split_impulse_penetration_threshold>-0.01</split_impulse_penetration_threshold>
-                <soft_cfm>0</soft_cfm>
-                <soft_erp>0.2</soft_erp>
-                <kp>1e+13</kp>
-                <kd>1</kd>
-              </bullet>
-            </contact>
-          </surface>
-        </collision>
-      </link>
-      <static>1</static>
-      <allow_auto_disable>1</allow_auto_disable>
-      <pose frame=''>23.3842 74.481 0 0 -0 0</pose>
-    </model>
-    <model name='oak_tree_big_0'>
-      <link name='link'>
-        <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
-        <pose frame=''>0 0 0 0 -0 0</pose>
-        <gravity>1</gravity>
-        <inertial>
-          <mass>1</mass>
-          <pose frame=''>0 0 0 0 -0 0</pose>
-          <inertia>
-            <ixx>1</ixx>
-            <ixy>0</ixy>
-            <ixz>0</ixz>
-            <iyy>1</iyy>
-            <iyz>0</iyz>
-            <izz>1</izz>
-          </inertia>
-        </inertial>
-        <visual name='bark'>
-          <geometry>
-            <mesh>
-              <uri>model://oak_tree/meshes/oak_tree.dae</uri>
-              <submesh>
-                <name>Bark</name>
-              </submesh>
-              <scale>3 3 3</scale>
-            </mesh>
-          </geometry>
-          <material>
-            <script>
-              <uri>model://oak_tree/materials/scripts/</uri>
-              <uri>model://oak_tree/materials/textures/</uri>
-              <name>OakTree/Bark</name>
-            </script>
-            <shader type='pixel'>
-              <normal_map>__default__</normal_map>
-            </shader>
-            <ambient>1 1 1 1</ambient>
-            <diffuse>1 1 1 1</diffuse>
-            <specular>0 0 0 1</specular>
-            <emissive>0 0 0 1</emissive>
-          </material>
-          <pose frame=''>0 0 0 0 -0 0</pose>
-          <transparency>0</transparency>
-          <cast_shadows>1</cast_shadows>
-        </visual>
-        <visual name='branch'>
-          <geometry>
-            <mesh>
-              <uri>model://oak_tree/meshes/oak_tree.dae</uri>
-              <submesh>
-                <name>Branch</name>
-              </submesh>
-              <scale>3 3 3</scale>
-            </mesh>
-          </geometry>
-          <material>
-            <script>
-              <uri>model://oak_tree/materials/scripts/</uri>
-              <uri>model://oak_tree/materials/textures/</uri>
-              <name>OakTree/Branch</name>
-            </script>
-            <shader type='pixel'>
-              <normal_map>__default__</normal_map>
-            </shader>
-            <ambient>1 1 1 1</ambient>
-            <diffuse>1 1 1 1</diffuse>
-            <specular>0 0 0 1</specular>
-            <emissive>0 0 0 1</emissive>
-          </material>
-          <pose frame=''>0 0 0 0 -0 0</pose>
-          <transparency>0</transparency>
-          <cast_shadows>1</cast_shadows>
-        </visual>
-        <collision name='collision'>
-          <laser_retro>0</laser_retro>
-          <max_contacts>10</max_contacts>
-          <pose frame=''>0 0 0 0 -0 0</pose>
-          <geometry>
-            <mesh>
-              <uri>model://oak_tree/meshes/oak_tree.dae</uri>
-              <scale>3 3 3</scale>
-            </mesh>
-          </geometry>
-          <surface>
-            <friction>
-              <ode>
-                <mu>1</mu>
-                <mu2>1</mu2>
-                <fdir1>0 0 0</fdir1>
-                <slip1>0</slip1>
-                <slip2>0</slip2>
-              </ode>
-              <torsional>
-                <coefficient>1</coefficient>
-                <patch_radius>0</patch_radius>
-                <surface_radius>0</surface_radius>
-                <use_patch_radius>1</use_patch_radius>
-                <ode>
-                  <slip>0</slip>
-                </ode>
-              </torsional>
-            </friction>
-            <bounce>
-              <restitution_coefficient>0</restitution_coefficient>
-              <threshold>1e+06</threshold>
-            </bounce>
-            <contact>
-              <collide_without_contact>0</collide_without_contact>
-              <collide_without_contact_bitmask>1</collide_without_contact_bitmask>
-              <collide_bitmask>1</collide_bitmask>
-              <ode>
-                <soft_cfm>0</soft_cfm>
-                <soft_erp>0.2</soft_erp>
-                <kp>1e+13</kp>
-                <kd>1</kd>
-                <max_vel>0.01</max_vel>
-                <min_depth>0</min_depth>
-              </ode>
-              <bullet>
-                <split_impulse>1</split_impulse>
-                <split_impulse_penetration_threshold>-0.01</split_impulse_penetration_threshold>
-                <soft_cfm>0</soft_cfm>
-                <soft_erp>0.2</soft_erp>
-                <kp>1e+13</kp>
-                <kd>1</kd>
-              </bullet>
-            </contact>
-          </surface>
-        </collision>
-      </link>
-      <static>1</static>
-      <allow_auto_disable>1</allow_auto_disable>
-      <pose frame=''>24.852 51.1813 0 0 -0 0</pose>
-    </model>
-    <model name='pine_tree_big_2'>
-      <link name='link'>
-        <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
-        <pose frame=''>0 0 0 0 -0 0</pose>
-        <gravity>1</gravity>
-        <inertial>
-          <mass>1</mass>
-          <pose frame=''>0 0 0 0 -0 0</pose>
-          <inertia>
-            <ixx>1</ixx>
-            <ixy>0</ixy>
-            <ixz>0</ixz>
-            <iyy>1</iyy>
-            <iyz>0</iyz>
-            <izz>1</izz>
-          </inertia>
-        </inertial>
-        <visual name='bark'>
-          <geometry>
-            <mesh>
-              <uri>model://pine_tree/meshes/pine_tree.dae</uri>
-              <submesh>
-                <name>Bark</name>
-              </submesh>
-              <scale>3 3 3</scale>
-            </mesh>
-          </geometry>
-          <material>
-            <script>
-              <uri>model://pine_tree/materials/scripts/</uri>
-              <uri>model://pine_tree/materials/textures/</uri>
-              <name>PineTree/Bark</name>
-            </script>
-            <shader type='pixel'>
-              <normal_map>__default__</normal_map>
-            </shader>
-            <ambient>1 1 1 1</ambient>
-            <diffuse>1 1 1 1</diffuse>
-            <specular>0 0 0 1</specular>
-            <emissive>0 0 0 1</emissive>
-          </material>
-          <pose frame=''>0 0 0 0 -0 0</pose>
-          <transparency>0</transparency>
-          <cast_shadows>1</cast_shadows>
-        </visual>
-        <visual name='branch'>
-          <geometry>
-            <mesh>
-              <uri>model://pine_tree/meshes/pine_tree.dae</uri>
-              <submesh>
-                <name>Branch</name>
-              </submesh>
-              <scale>3 3 3</scale>
-            </mesh>
-          </geometry>
-          <material>
-            <script>
-              <uri>model://pine_tree/materials/scripts/</uri>
-              <uri>model://pine_tree/materials/textures/</uri>
-              <name>PineTree/Branch</name>
-            </script>
-            <shader type='pixel'>
-              <normal_map>__default__</normal_map>
-            </shader>
-            <ambient>1 1 1 1</ambient>
-            <diffuse>1 1 1 1</diffuse>
-            <specular>0 0 0 1</specular>
-            <emissive>0 0 0 1</emissive>
-          </material>
-          <pose frame=''>0 0 0 0 -0 0</pose>
-          <transparency>0</transparency>
-          <cast_shadows>1</cast_shadows>
-        </visual>
-        <collision name='collision'>
-          <laser_retro>0</laser_retro>
-          <max_contacts>10</max_contacts>
-          <pose frame=''>0 0 0 0 -0 0</pose>
-          <geometry>
-            <mesh>
-              <uri>model://pine_tree/meshes/pine_tree.dae</uri>
-              <scale>3 3 3</scale>
-            </mesh>
-          </geometry>
-          <surface>
-            <friction>
-              <ode>
-                <mu>1</mu>
-                <mu2>1</mu2>
-                <fdir1>0 0 0</fdir1>
-                <slip1>0</slip1>
-                <slip2>0</slip2>
-              </ode>
-              <torsional>
-                <coefficient>1</coefficient>
-                <patch_radius>0</patch_radius>
-                <surface_radius>0</surface_radius>
-                <use_patch_radius>1</use_patch_radius>
-                <ode>
-                  <slip>0</slip>
-                </ode>
-              </torsional>
-            </friction>
-            <bounce>
-              <restitution_coefficient>0</restitution_coefficient>
-              <threshold>1e+06</threshold>
-            </bounce>
-            <contact>
-              <collide_without_contact>0</collide_without_contact>
-              <collide_without_contact_bitmask>1</collide_without_contact_bitmask>
-              <collide_bitmask>1</collide_bitmask>
-              <ode>
-                <soft_cfm>0</soft_cfm>
-                <soft_erp>0.2</soft_erp>
-                <kp>1e+13</kp>
-                <kd>1</kd>
-                <max_vel>0.01</max_vel>
-                <min_depth>0</min_depth>
-              </ode>
-              <bullet>
-                <split_impulse>1</split_impulse>
-                <split_impulse_penetration_threshold>-0.01</split_impulse_penetration_threshold>
-                <soft_cfm>0</soft_cfm>
-                <soft_erp>0.2</soft_erp>
-                <kp>1e+13</kp>
-                <kd>1</kd>
-              </bullet>
-            </contact>
-          </surface>
-        </collision>
-      </link>
-      <static>1</static>
-      <allow_auto_disable>1</allow_auto_disable>
-      <pose frame=''>22.3552 36.1245 0 0 -0 0</pose>
-    </model>
-    <model name='pine_tree_big_3'>
-      <link name='link'>
-        <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
-        <pose frame=''>0 0 0 0 -0 0</pose>
-        <gravity>1</gravity>
-        <inertial>
-          <mass>1</mass>
-          <pose frame=''>0 0 0 0 -0 0</pose>
-          <inertia>
-            <ixx>1</ixx>
-            <ixy>0</ixy>
-            <ixz>0</ixz>
-            <iyy>1</iyy>
-            <iyz>0</iyz>
-            <izz>1</izz>
-          </inertia>
-        </inertial>
-        <visual name='bark'>
-          <geometry>
-            <mesh>
-              <uri>model://pine_tree/meshes/pine_tree.dae</uri>
-              <submesh>
-                <name>Bark</name>
-              </submesh>
-              <scale>3 3 3</scale>
-            </mesh>
-          </geometry>
-          <material>
-            <script>
-              <uri>model://pine_tree/materials/scripts/</uri>
-              <uri>model://pine_tree/materials/textures/</uri>
-              <name>PineTree/Bark</name>
-            </script>
-            <shader type='pixel'>
-              <normal_map>__default__</normal_map>
-            </shader>
-            <ambient>1 1 1 1</ambient>
-            <diffuse>1 1 1 1</diffuse>
-            <specular>0 0 0 1</specular>
-            <emissive>0 0 0 1</emissive>
-          </material>
-          <pose frame=''>0 0 0 0 -0 0</pose>
-          <transparency>0</transparency>
-          <cast_shadows>1</cast_shadows>
-        </visual>
-        <visual name='branch'>
-          <geometry>
-            <mesh>
-              <uri>model://pine_tree/meshes/pine_tree.dae</uri>
-              <submesh>
-                <name>Branch</name>
-              </submesh>
-              <scale>3 3 3</scale>
-            </mesh>
-          </geometry>
-          <material>
-            <script>
-              <uri>model://pine_tree/materials/scripts/</uri>
-              <uri>model://pine_tree/materials/textures/</uri>
-              <name>PineTree/Branch</name>
-            </script>
-            <shader type='pixel'>
-              <normal_map>__default__</normal_map>
-            </shader>
-            <ambient>1 1 1 1</ambient>
-            <diffuse>1 1 1 1</diffuse>
-            <specular>0 0 0 1</specular>
-            <emissive>0 0 0 1</emissive>
-          </material>
-          <pose frame=''>0 0 0 0 -0 0</pose>
-          <transparency>0</transparency>
-          <cast_shadows>1</cast_shadows>
-        </visual>
-        <collision name='collision'>
-          <laser_retro>0</laser_retro>
-          <max_contacts>10</max_contacts>
-          <pose frame=''>0 0 0 0 -0 0</pose>
-          <geometry>
-            <mesh>
-              <uri>model://pine_tree/meshes/pine_tree.dae</uri>
-              <scale>3 3 3</scale>
-            </mesh>
-          </geometry>
-          <surface>
-            <friction>
-              <ode>
-                <mu>1</mu>
-                <mu2>1</mu2>
-                <fdir1>0 0 0</fdir1>
-                <slip1>0</slip1>
-                <slip2>0</slip2>
-              </ode>
-              <torsional>
-                <coefficient>1</coefficient>
-                <patch_radius>0</patch_radius>
-                <surface_radius>0</surface_radius>
-                <use_patch_radius>1</use_patch_radius>
-                <ode>
-                  <slip>0</slip>
-                </ode>
-              </torsional>
-            </friction>
-            <bounce>
-              <restitution_coefficient>0</restitution_coefficient>
-              <threshold>1e+06</threshold>
-            </bounce>
-            <contact>
-              <collide_without_contact>0</collide_without_contact>
-              <collide_without_contact_bitmask>1</collide_without_contact_bitmask>
-              <collide_bitmask>1</collide_bitmask>
-              <ode>
-                <soft_cfm>0</soft_cfm>
-                <soft_erp>0.2</soft_erp>
-                <kp>1e+13</kp>
-                <kd>1</kd>
-                <max_vel>0.01</max_vel>
-                <min_depth>0</min_depth>
-              </ode>
-              <bullet>
-                <split_impulse>1</split_impulse>
-                <split_impulse_penetration_threshold>-0.01</split_impulse_penetration_threshold>
-                <soft_cfm>0</soft_cfm>
-                <soft_erp>0.2</soft_erp>
-                <kp>1e+13</kp>
-                <kd>1</kd>
-              </bullet>
-            </contact>
-          </surface>
-        </collision>
-      </link>
-      <static>1</static>
-      <allow_auto_disable>1</allow_auto_disable>
-      <pose frame=''>-11.0171 87.0574 0 0 -0 0</pose>
-    </model>
-    <model name='person_standing'>
-      <link name='link'>
-        <inertial>
-          <pose frame=''>0 -0.1 0.95 0 -0 0</pose>
-          <mass>80</mass>
-          <inertia>
-            <ixx>24.88</ixx>
-            <ixy>0</ixy>
-            <ixz>0</ixz>
-            <iyy>25.73</iyy>
-            <iyz>0</iyz>
-            <izz>2.48</izz>
-          </inertia>
-        </inertial>
-        <collision name='bottom'>
-          <pose frame=''>0 -0.1 0.01 0 -0 0</pose>
-          <geometry>
-            <box>
-              <size>0.5 0.35 0.02</size>
-            </box>
-          </geometry>
-          <max_contacts>10</max_contacts>
-          <surface>
-            <contact>
-              <ode/>
-            </contact>
-            <bounce/>
-            <friction>
-              <torsional>
-                <ode/>
-              </torsional>
-              <ode/>
-            </friction>
-          </surface>
-        </collision>
-        <collision name='person'>
-          <pose frame=''>0 0 0.02 0.04 -0 0</pose>
-          <geometry>
-            <mesh>
-              <uri>model://person_standing/meshes/standing.dae</uri>
-            </mesh>
-          </geometry>
-          <max_contacts>10</max_contacts>
-          <surface>
-            <contact>
-              <ode/>
-            </contact>
-            <bounce/>
-            <friction>
-              <torsional>
-                <ode/>
-              </torsional>
-              <ode/>
-            </friction>
-          </surface>
-        </collision>
-        <visual name='visual'>
-          <pose frame=''>0 0 0.02 0.04 -0 0</pose>
-          <geometry>
-            <mesh>
-              <uri>model://person_standing/meshes/standing.dae</uri>
-            </mesh>
-          </geometry>
-        </visual>
-        <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
-      </link>
-      <pose frame=''>-19.5018 62.8726 0 0 -0 0</pose>
-    </model>
-    <model name='person_standing_0'>
-      <link name='link'>
-        <inertial>
-          <pose frame=''>0 -0.1 0.95 0 -0 0</pose>
-          <mass>80</mass>
-          <inertia>
-            <ixx>24.88</ixx>
-            <ixy>0</ixy>
-            <ixz>0</ixz>
-            <iyy>25.73</iyy>
-            <iyz>0</iyz>
-            <izz>2.48</izz>
-          </inertia>
-        </inertial>
-        <collision name='bottom'>
-          <pose frame=''>0 -0.1 0.01 0 -0 0</pose>
-          <geometry>
-            <box>
-              <size>0.5 0.35 0.02</size>
-            </box>
-          </geometry>
-          <max_contacts>10</max_contacts>
-          <surface>
-            <contact>
-              <ode/>
-            </contact>
-            <bounce/>
-            <friction>
-              <torsional>
-                <ode/>
-              </torsional>
-              <ode/>
-            </friction>
-          </surface>
-        </collision>
-        <collision name='person'>
-          <pose frame=''>0 0 0.02 0.04 -0 0</pose>
-          <geometry>
-            <mesh>
-              <uri>model://person_standing/meshes/standing.dae</uri>
-            </mesh>
-          </geometry>
-          <max_contacts>10</max_contacts>
-          <surface>
-            <contact>
-              <ode/>
-            </contact>
-            <bounce/>
-            <friction>
-              <torsional>
-                <ode/>
-              </torsional>
-              <ode/>
-            </friction>
-          </surface>
-        </collision>
-        <visual name='visual'>
-          <pose frame=''>0 0 0.02 0.04 -0 0</pose>
-          <geometry>
-            <mesh>
-              <uri>model://person_standing/meshes/standing.dae</uri>
-            </mesh>
-          </geometry>
-        </visual>
-        <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
-      </link>
-      <pose frame=''>-19.5129 53.2912 0 0 -0 0</pose>
-    </model>
-    <model name='person_standing_1'>
-      <link name='link'>
-        <inertial>
-          <pose frame=''>0 -0.1 0.95 0 -0 0</pose>
-          <mass>80</mass>
-          <inertia>
-            <ixx>24.88</ixx>
-            <ixy>0</ixy>
-            <ixz>0</ixz>
-            <iyy>25.73</iyy>
-            <iyz>0</iyz>
-            <izz>2.48</izz>
-          </inertia>
-        </inertial>
-        <collision name='bottom'>
-          <pose frame=''>0 -0.1 0.01 0 -0 0</pose>
-          <geometry>
-            <box>
-              <size>0.5 0.35 0.02</size>
-            </box>
-          </geometry>
-          <max_contacts>10</max_contacts>
-          <surface>
-            <contact>
-              <ode/>
-            </contact>
-            <bounce/>
-            <friction>
-              <torsional>
-                <ode/>
-              </torsional>
-              <ode/>
-            </friction>
-          </surface>
-        </collision>
-        <collision name='person'>
-          <pose frame=''>0 0 0.02 0.04 -0 0</pose>
-          <geometry>
-            <mesh>
-              <uri>model://person_standing/meshes/standing.dae</uri>
-            </mesh>
-          </geometry>
-          <max_contacts>10</max_contacts>
-          <surface>
-            <contact>
-              <ode/>
-            </contact>
-            <bounce/>
-            <friction>
-              <torsional>
-                <ode/>
-              </torsional>
-              <ode/>
-            </friction>
-          </surface>
-        </collision>
-        <visual name='visual'>
-          <pose frame=''>0 0 0.02 0.04 -0 0</pose>
-          <geometry>
-            <mesh>
-              <uri>model://person_standing/meshes/standing.dae</uri>
-            </mesh>
-          </geometry>
-        </visual>
-        <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
-      </link>
-      <pose frame=''>-18.8086 46.0838 0 0 -0 0</pose>
-    </model>
     <state world_name='default'>
-      <sim_time>6700 226000000</sim_time>
-      <real_time>241 860529559</real_time>
-      <wall_time>1610292500 824178366</wall_time>
-      <iterations>45503</iterations>
-      <model name='40x40wall'>
-        <pose frame=''>-0.72664 0.4255 0 0 -0 0</pose>
-        <scale>1 1 1</scale>
-        <link name='Wall_10'>
-          <pose frame=''>-0.726639 20.4255 0 0 -0 0</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-        <link name='Wall_12'>
-          <pose frame=''>-20.7266 0.425461 0 0 0 -1.5708</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-        <link name='Wall_14'>
-          <pose frame=''>19.2734 0.425461 0 0 0 -1.5708</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-        <link name='Wall_16'>
-          <pose frame=''>-0.726639 -19.5745 0 0 -0 0</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='Marker0'>
-        <pose frame=''>-0.050007 2 0.00404 0.719859 1.57074 0.719883</pose>
+      <sim_time>6646 201000000</sim_time>
+      <real_time>285 66944998</real_time>
+      <wall_time>1609428209 948671999</wall_time>
+      <iterations>63819</iterations>
+      <model name='Marker3'>
+        <pose frame=''>-0.254264 -0.008265 0.004999 -2.84618 1.57079 -2.83276</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>-0.050007 2 0.00404 0.719859 1.57074 0.719883</pose>
-          <velocity>-0 -0 -0 0 -0 1e-06</velocity>
-          <acceleration>0 -0 0 0 -0 0</acceleration>
-          <wrench>0 -0 0 0 -0 0</wrench>
+          <pose frame=''>-0.254264 -0.008265 0.004999 -2.84618 1.57079 -2.83276</pose>
+          <velocity>0 -0 0 0 -0 0</velocity>
+          <acceleration>0 -0 -0 0 -0 0</acceleration>
+          <wrench>0 -0 -0 0 -0 0</wrench>
         </link>
       </model>
-      <model name='Marker0_clone'>
-        <pose frame=''>-0.050007 -2 0.00404 0.768127 1.57073 0.768161</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>-0.050007 -2 0.00404 0.768127 1.57073 0.768161</pose>
-          <velocity>-0 -0 -0 0 -0 1e-06</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='ground_plane'>
+      <model name='ground_plane_0'>
         <pose frame=''>0 0 0 0 -0 0</pose>
         <scale>1 1 1</scale>
         <link name='link'>
@@ -4381,284 +3117,184 @@
         </link>
       </model>
       <model name='iris_demo_9002'>
-        <pose frame=''>-1e-06 3.7e-05 -0.000295 -0.001555 -0 -6e-06</pose>
+        <pose frame=''>-2 1e-06 6e-06 -0.000279 -0 -0</pose>
         <scale>1 1 1</scale>
         <link name='gimbal_small_2d::base_link'>
-          <pose frame=''>-1e-06 -0.009854 0.069721 1.57 0.001555 1.56999</pose>
+          <pose frame=''>-2 -0.009979 0.070009 1.57 0.000279 1.57</pose>
           <velocity>-0 2e-06 2e-06 -3.2e-05 1e-06 1.9e-05</velocity>
-          <acceleration>-0.000569 5e-06 0 -1.1e-05 0.001383 0.037134</acceleration>
-          <wrench>-0.000114 1e-06 0 0 -0 0</wrench>
+          <acceleration>-0.000564 5e-06 0 -1.1e-05 0.001336 0.037155</acceleration>
+          <wrench>-0.000113 1e-06 0 0 -0 0</wrench>
         </link>
         <link name='gimbal_small_2d::tilt_link'>
-          <pose frame=''>0.019983 -0.009839 0.089737 3.14079 0.001556 1.56999</pose>
+          <pose frame=''>-1.98002 -0.00999 0.090025 3.14079 0.00028 1.57</pose>
           <velocity>-0 3e-06 2e-06 -3.2e-05 1e-06 1.9e-05</velocity>
-          <acceleration>-0.00063 0.000745 -2.7e-05 -9e-06 0.001692 0.037055</acceleration>
+          <acceleration>-0.000625 0.000746 -2.6e-05 -9e-06 0.001641 0.037077</acceleration>
           <wrench>-6e-06 7e-06 -0 0 -0 0</wrench>
         </link>
         <link name='iris::base_link'>
-          <pose frame=''>-1e-06 0.00034 0.194628 -0.001555 -0 -6e-06</pose>
+          <pose frame=''>-2 5.5e-05 0.194929 -0.000279 -0 -0</pose>
           <velocity>-0 6e-06 1e-06 -3.2e-05 -1e-06 0</velocity>
-          <acceleration>-0.000211 5e-06 0 -2.7e-05 -0.001065 -2e-06</acceleration>
-          <wrench>-0.000316 8e-06 0 0 -0 0</wrench>
+          <acceleration>-0.000207 5e-06 0 -2.7e-05 -0.00105 -2e-06</acceleration>
+          <wrench>-0.00031 8e-06 0 0 -0 0</wrench>
         </link>
         <link name='iris::iris/ground_truth/odometry_sensorgt_link'>
-          <pose frame=''>-1e-06 0.00034 0.194628 -0.001555 -0 -6e-06</pose>
+          <pose frame=''>-2 5.5e-05 0.194929 -0.000279 0 0</pose>
           <velocity>-0 6e-06 1e-06 -3.2e-05 1e-06 -1.9e-05</velocity>
-          <acceleration>-0.00041 6e-06 0 -1.1e-05 0.001256 -0.037858</acceleration>
+          <acceleration>-0.000405 6e-06 0 -1.1e-05 0.001305 -0.037878</acceleration>
           <wrench>-6.1e-05 1e-06 0 0 -0 0</wrench>
         </link>
         <link name='iris::iris/imu_link'>
-          <pose frame=''>-1e-06 0.00034 0.194628 -0.001555 -0 -6e-06</pose>
+          <pose frame=''>-2 5.5e-05 0.194929 -0.000279 0 0</pose>
           <velocity>-0 6e-06 1e-06 -3.2e-05 1e-06 -1.9e-05</velocity>
-          <acceleration>-0.000403 6e-06 0 -1.1e-05 0.001256 -0.037876</acceleration>
-          <wrench>-6.1e-05 1e-06 0 0 -0 0</wrench>
+          <acceleration>-0.000398 6e-06 0 -1.1e-05 0.001305 -0.037896</acceleration>
+          <wrench>-6e-05 1e-06 0 0 -0 0</wrench>
         </link>
         <link name='iris::rotor_0'>
-          <pose frame=''>0.129998 -0.219624 0.21797 -0.000598 0.001436 1.17578</pose>
+          <pose frame=''>-1.87 -0.219938 0.21799 -0.000107 0.000258 1.17578</pose>
           <velocity>-0 7e-06 8e-06 -3.2e-05 1e-06 -0</velocity>
-          <acceleration>-0.0006 -0.000132 -0.000168 0.007344 0.018899 -5.2e-05</acceleration>
+          <acceleration>-0.000595 -0.000132 -0.000168 0.007345 0.018904 -2.9e-05</acceleration>
           <wrench>-1.5e-05 -3e-06 -4e-06 0 -0 0</wrench>
         </link>
         <link name='iris::rotor_1'>
-          <pose frame=''>-0.13 0.200377 0.217317 -0.000915 0.001257 0.941518</pose>
+          <pose frame=''>-2.13 0.200062 0.217873 -0.000164 0.000226 0.941529</pose>
           <velocity>-0 7e-06 -5e-06 -3.2e-05 1e-06 -0</velocity>
-          <acceleration>-0.000159 0.000141 0.000169 0.009227 0.013881 -4.3e-05</acceleration>
+          <acceleration>-0.000154 0.000141 0.000169 0.009232 0.013889 -2.7e-05</acceleration>
           <wrench>-4e-06 4e-06 4e-06 0 -0 0</wrench>
         </link>
         <link name='iris::rotor_2'>
-          <pose frame=''>0.130001 0.220375 0.217286 -0.001444 0.000579 0.381441</pose>
+          <pose frame=''>-1.87 0.220062 0.217867 -0.000259 0.000104 0.381447</pose>
           <velocity>-0 7e-06 -6e-06 -3.2e-05 1e-06 -0</velocity>
-          <acceleration>-0.000135 -0.00013 -0.000173 0.007176 0.00417 -2.9e-05</acceleration>
+          <acceleration>-0.00013 -0.00013 -0.000174 0.007177 0.004171 -2.5e-05</acceleration>
           <wrench>-3e-06 -3e-06 -4e-06 0 -0 0</wrench>
         </link>
         <link name='iris::rotor_3'>
-          <pose frame=''>-0.130002 -0.199623 0.217939 0.000161 0.001547 1.6743</pose>
+          <pose frame=''>-2.13 -0.199938 0.217985 2.9e-05 0.000278 1.6743</pose>
           <velocity>-0 7e-06 8e-06 -3.2e-05 1e-06 -0</velocity>
-          <acceleration>-0.000575 0.000144 0.000174 -0.002187 0.022366 -5.7e-05</acceleration>
+          <acceleration>-0.00057 0.000144 0.000174 -0.002187 0.022365 -3e-05</acceleration>
           <wrench>-1.4e-05 4e-06 4e-06 0 -0 0</wrench>
         </link>
       </model>
       <model name='iris_demo_9012'>
-        <pose frame=''>-8e-06 2 0.008582 0.000263 -0.000691 7.7e-05</pose>
+        <pose frame=''>-1.4e-05 3e-06 0.009528 4.5e-05 -8e-05 1.1e-05</pose>
         <scale>1 1 1</scale>
         <link name='gimbal_small_2d::base_link'>
-          <pose frame=''>-5.6e-05 1.98998 0.078579 1.56931 -0.000263 1.57008</pose>
-          <velocity>-1e-06 -0 0 2e-06 -7e-06 5e-06</velocity>
-          <acceleration>-0 -0 0 -4e-06 -1e-06 0.005304</acceleration>
-          <wrench>-0 -0 0 0 -0 0</wrench>
+          <pose frame=''>-2e-05 -0.01 0.079528 1.56992 -4.5e-05 1.57001</pose>
+          <velocity>1e-06 -1e-06 -0 8e-06 9e-06 5e-06</velocity>
+          <acceleration>0 -0 0 -1e-06 -1e-06 0.013257</acceleration>
+          <wrench>0 -0 0 0 -0 0</wrench>
         </link>
         <link name='gimbal_small_2d::tilt_link'>
-          <pose frame=''>0.019915 1.98996 0.098609 3.1401 -0.000263 1.57008</pose>
-          <velocity>-1e-06 -0 0 2e-06 -7e-06 5e-06</velocity>
-          <acceleration>0 0.000106 0 -4e-06 -1e-06 0.005304</acceleration>
-          <wrench>0 1e-06 0 0 -0 0</wrench>
+          <pose frame=''>0.019963 -0.010016 0.099546 3.14072 -4.5e-05 1.57001</pose>
+          <velocity>1e-06 -1e-06 -0 8e-06 9e-06 5e-06</velocity>
+          <acceleration>0 0.000265 0 -1e-06 -1e-06 0.013257</acceleration>
+          <wrench>0 3e-06 0 0 -0 0</wrench>
         </link>
         <link name='iris::base_link'>
-          <pose frame=''>-0.000143 1.99995 0.203505 0.000263 -0.000691 7.7e-05</pose>
-          <velocity>-1e-06 -0 0 2e-06 -7e-06 1e-06</velocity>
+          <pose frame=''>-3e-05 -5e-06 0.204451 4.5e-05 -8e-05 1.1e-05</pose>
+          <velocity>2e-06 -2e-06 0 8e-06 9e-06 0</velocity>
           <acceleration>-0 -0 0 0 -0 0</acceleration>
           <wrench>-0 -0 0 0 -0 0</wrench>
         </link>
         <link name='iris::iris/ground_truth/odometry_sensorgt_link'>
-          <pose frame=''>-0.000143 1.99995 0.203505 0.000263 -0.000691 7.7e-05</pose>
-          <velocity>-1e-06 -0 0 2e-06 -7e-06 -1e-06</velocity>
-          <acceleration>-0 -0 0 0 2e-06 -0.005706</acceleration>
+          <pose frame=''>-3e-05 -5e-06 0.204451 4.5e-05 -8e-05 1.1e-05</pose>
+          <velocity>2e-06 -2e-06 0 8e-06 9e-06 6e-06</velocity>
+          <acceleration>-0 -0 0 -0 -1e-06 0.013517</acceleration>
           <wrench>-0 -0 0 0 -0 0</wrench>
         </link>
         <link name='iris::iris/imu_link'>
-          <pose frame=''>-0.000143 1.99995 0.203505 0.000263 -0.000691 7.7e-05</pose>
-          <velocity>-1e-06 -0 0 2e-06 -7e-06 -1e-06</velocity>
-          <acceleration>-0 -0 0 0 -0 3e-05</acceleration>
+          <pose frame=''>-3e-05 -5e-06 0.204451 4.5e-05 -8e-05 1.1e-05</pose>
+          <velocity>2e-06 -2e-06 0 8e-06 9e-06 6e-06</velocity>
+          <acceleration>-0 -0 0 0 -1e-06 0.013579</acceleration>
           <wrench>-0 -0 0 0 -0 0</wrench>
         </link>
         <link name='iris::rotor_0'>
-          <pose frame=''>0.129858 1.77995 0.226537 0.000593 0.000442 -1.84782</pose>
-          <velocity>-1e-06 -0 0 2e-06 -7e-06 1e-06</velocity>
-          <acceleration>0 -0 0 -0 -0 -0</acceleration>
-          <wrench>0 -0 0 0 -0 0</wrench>
+          <pose frame=''>0.129971 -0.220005 0.227452 6.4e-05 6.5e-05 -1.84719</pose>
+          <velocity>2e-06 -2e-06 -3e-06 8e-06 9e-06 0</velocity>
+          <acceleration>-0 -0 -0 0 -1e-06 0</acceleration>
+          <wrench>-0 -0 -0 0 -0 0</wrench>
         </link>
         <link name='iris::rotor_1'>
-          <pose frame=''>-0.130174 2.19993 0.226467 0.000657 -0.000338 -0.732811</pose>
-          <velocity>-2e-06 -1e-06 -0 2e-06 -7e-06 1e-06</velocity>
-          <acceleration>-0 -0 -0 -3e-06 3e-06 0</acceleration>
-          <wrench>-0 -0 -0 0 -0 0</wrench>
+          <pose frame=''>-0.130034 0.199992 0.22745 8.7e-05 -2.9e-05 -0.732188</pose>
+          <velocity>2e-06 -2e-06 3e-06 8e-06 9e-06 0</velocity>
+          <acceleration>0 -0 0 0 -0 0</acceleration>
+          <wrench>0 -0 0 0 -0 0</wrench>
         </link>
         <link name='iris::rotor_2'>
-          <pose frame=''>0.129824 2.21995 0.226652 -0.000736 -7.2e-05 1.83683</pose>
-          <velocity>-2e-06 -0 1e-06 2e-06 -7e-06 1e-06</velocity>
-          <acceleration>-0 -0 -0 -2e-06 6e-06 0</acceleration>
-          <wrench>-0 -0 -0 0 -0 0</wrench>
+          <pose frame=''>0.129966 0.219995 0.227472 -8.9e-05 -2.2e-05 1.83594</pose>
+          <velocity>2e-06 -2e-06 1e-06 8e-06 9e-06 0</velocity>
+          <acceleration>0 -0 0 0 -0 0</acceleration>
+          <wrench>0 -0 0 0 -0 0</wrench>
         </link>
         <link name='iris::rotor_3'>
-          <pose frame=''>-0.130143 1.79993 0.226362 0.000405 -0.000618 -0.216763</pose>
-          <velocity>-1e-06 -1e-06 -1e-06 2e-06 -7e-06 1e-06</velocity>
-          <acceleration>0 -0 0 -1e-06 0 0</acceleration>
-          <wrench>0 -0 0 0 -0 0</wrench>
+          <pose frame=''>-0.13003 -0.200008 0.227432 6.1e-05 -6.8e-05 -0.217653</pose>
+          <velocity>2e-06 -2e-06 -0 8e-06 9e-06 0</velocity>
+          <acceleration>-0 -0 -0 0 -0 0</acceleration>
+          <wrench>-0 -0 -0 0 -0 0</wrench>
         </link>
       </model>
       <model name='iris_demo_9022'>
-        <pose frame=''>-9e-06 -2 0.008583 0.000306 -0.000683 7.1e-05</pose>
+        <pose frame=''>2 1e-06 5e-06 -0.000264 -0 -0</pose>
         <scale>1 1 1</scale>
         <link name='gimbal_small_2d::base_link'>
-          <pose frame=''>-5.6e-05 -2.01003 0.07858 1.56932 -0.000307 1.57007</pose>
-          <velocity>-1e-06 -0 0 2e-06 -7e-06 -1e-06</velocity>
-          <acceleration>0 -0 -0 0 -0 5.6e-05</acceleration>
-          <wrench>0 -0 -0 0 -0 0</wrench>
+          <pose frame=''>2 -0.00998 0.070008 1.57 0.000264 1.57</pose>
+          <velocity>-0 2e-06 2e-06 -3.2e-05 1e-06 1.9e-05</velocity>
+          <acceleration>-0.000564 3e-06 0 -7e-06 0.001335 0.037158</acceleration>
+          <wrench>-0.000113 1e-06 0 0 -0 0</wrench>
         </link>
         <link name='gimbal_small_2d::tilt_link'>
-          <pose frame=''>0.019915 -2.01005 0.098609 3.14011 -0.000306 1.57007</pose>
-          <velocity>-1e-06 -0 0 2e-06 -7e-06 -1e-06</velocity>
-          <acceleration>0 1e-06 0 0 -0 5.6e-05</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
+          <pose frame=''>2.01998 -0.009991 0.090024 3.14079 0.000264 1.57</pose>
+          <velocity>-0 3e-06 2e-06 -3.2e-05 1e-06 1.9e-05</velocity>
+          <acceleration>-0.000625 0.000744 -2.6e-05 -4e-06 0.001641 0.037079</acceleration>
+          <wrench>-6e-06 7e-06 -0 0 -0 0</wrench>
         </link>
         <link name='iris::base_link'>
-          <pose frame=''>-0.000142 -2.00007 0.203506 0.000306 -0.000683 7.1e-05</pose>
-          <velocity>-1e-06 -0 0 2e-06 -7e-06 1e-06</velocity>
-          <acceleration>0 -0 -0 0 -0 0</acceleration>
-          <wrench>0 -0 -0 0 -0 0</wrench>
+          <pose frame=''>2 5.2e-05 0.194928 -0.000264 -0 -0</pose>
+          <velocity>-0 6e-06 1e-06 -3.2e-05 -1e-06 0</velocity>
+          <acceleration>-0.000207 3e-06 0 -1.7e-05 -0.00105 -2e-06</acceleration>
+          <wrench>-0.00031 5e-06 0 0 -0 0</wrench>
         </link>
         <link name='iris::iris/ground_truth/odometry_sensorgt_link'>
-          <pose frame=''>-0.000142 -2.00007 0.203506 0.000306 -0.000683 7.1e-05</pose>
-          <velocity>-1e-06 -0 0 2e-06 -7e-06 5e-06</velocity>
-          <acceleration>0 -0 0 0 -2e-06 0.005591</acceleration>
-          <wrench>0 -0 0 0 -0 0</wrench>
+          <pose frame=''>2 5.2e-05 0.194928 -0.000264 0 0</pose>
+          <velocity>-0 6e-06 1e-06 -3.2e-05 1e-06 1.8e-05</velocity>
+          <acceleration>-0.000405 4e-06 0 -7e-06 0.001325 0.035951</acceleration>
+          <wrench>-6.1e-05 1e-06 0 0 -0 0</wrench>
         </link>
         <link name='iris::iris/imu_link'>
-          <pose frame=''>-0.000142 -2.00007 0.203506 0.000306 -0.000683 7.1e-05</pose>
-          <velocity>-1e-06 -0 0 2e-06 -7e-06 -1e-06</velocity>
-          <acceleration>0 -0 0 -0 2e-06 -0.005658</acceleration>
-          <wrench>0 -0 0 0 -0 0</wrench>
+          <pose frame=''>2 5.2e-05 0.194928 -0.000264 0 0</pose>
+          <velocity>-0 6e-06 1e-06 -3.2e-05 1e-06 1.8e-05</velocity>
+          <acceleration>-0.000398 4e-06 0 -7e-06 0.001325 0.035971</acceleration>
+          <wrench>-6e-05 1e-06 0 0 -0 0</wrench>
         </link>
         <link name='iris::rotor_0'>
-          <pose frame=''>0.129858 -2.22006 0.226527 0.000717 0.000215 -1.44032</pose>
-          <velocity>-1e-06 -0 0 2e-06 -7e-06 1e-06</velocity>
-          <acceleration>0 -0 -0 0 -0 0</acceleration>
-          <wrench>0 -0 -0 0 -0 0</wrench>
+          <pose frame=''>2.13 -0.219941 0.217986 -3.4e-05 -0.000262 -1.44047</pose>
+          <velocity>-0 7e-06 8e-06 -3.2e-05 1e-06 -0</velocity>
+          <acceleration>-0.000595 -0.000134 -0.000169 -0.002724 0.02209 -3e-05</acceleration>
+          <wrench>-1.5e-05 -3e-06 -4e-06 0 -0 0</wrench>
         </link>
         <link name='iris::rotor_1'>
-          <pose frame=''>-0.130172 -1.80008 0.226478 -0.000416 -0.000621 1.01196</pose>
-          <velocity>-2e-06 -1e-06 -0 2e-06 -7e-06 1e-06</velocity>
-          <acceleration>0 -0 0 0 -0 0</acceleration>
-          <wrench>0 -0 0 0 -0 0</wrench>
+          <pose frame=''>1.87 0.200059 0.217875 -0.00014 0.000224 1.0118</pose>
+          <velocity>-0 7e-06 -5e-06 -3.2e-05 1e-06 -0</velocity>
+          <acceleration>-0.000154 0.000139 0.00017 0.0089 0.015458 -2.7e-05</acceleration>
+          <wrench>-4e-06 3e-06 4e-06 0 -0 0</wrench>
         </link>
         <link name='iris::rotor_2'>
-          <pose frame=''>0.129827 -1.78006 0.226662 -0.000284 0.000692 -3.10982</pose>
-          <velocity>-2e-06 -0 1e-06 2e-06 -7e-06 1e-06</velocity>
-          <acceleration>0 -0 0 0 -0 0</acceleration>
-          <wrench>0 -0 0 0 -0 0</wrench>
+          <pose frame=''>2.13 0.220059 0.21787 0.000264 -8e-06 -3.10995</pose>
+          <velocity>-0 7e-06 -6e-06 -3.2e-05 1e-06 -0</velocity>
+          <acceleration>-0.00013 -0.000132 -0.000173 0.000666 0.001341 -2.4e-05</acceleration>
+          <wrench>-3e-06 -3e-06 -4e-06 0 -0 0</wrench>
         </link>
         <link name='iris::rotor_3'>
-          <pose frame=''>-0.130143 -2.20008 0.226356 0.000514 0.000544 -1.96324</pose>
-          <velocity>-1e-06 -1e-06 -1e-06 2e-06 -7e-06 1e-06</velocity>
-          <acceleration>0 -0 -0 0 -0 0</acceleration>
-          <wrench>0 -0 -0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='oak_tree_big'>
-        <pose frame=''>-4.37791 43.1663 0 0 -0 0</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>-4.37791 43.1663 0 0 -0 0</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='oak_tree_big_0'>
-        <pose frame=''>24.4249 -35.486 0 0 0 -1.86814</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>24.4249 -35.486 0 0 0 -1.86814</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='person_standing'>
-        <pose frame=''>-20.1712 53.7015 3e-06 -4.4e-05 -0 1.50756</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>-20.1712 53.7015 3e-06 -4.4e-05 -0 1.50756</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>1.30619 -0.090071 -0.241135 0.094025 1.42193 -0.002318</acceleration>
-          <wrench>104.495 -7.20569 -19.2908 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='person_standing_0'>
-        <pose frame=''>-30.5033 6.34984 -0 0 -0 3.07857</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>-30.5033 6.34984 -0 0 -0 3.07857</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0.00041 0.002271 0 -0.002391 0.000437 -0</acceleration>
-          <wrench>0.032798 0.181683 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='person_standing_1'>
-        <pose frame=''>38.1929 -4.45001 -0 -1e-06 -0 -0.664115</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>38.1929 -4.45001 -0 -1e-06 -0 -0.664115</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0.788742 1.00149 -0.495013 -1.05481 0.857814 -0.000686</acceleration>
-          <wrench>63.0994 80.1191 -39.6011 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='pine_tree_big'>
-        <pose frame=''>25.1819 27.8348 0 0 -0 0</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>25.1819 27.8348 0 0 -0 0</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='pine_tree_big_0'>
-        <pose frame=''>3.9691 -31.9995 0 0 -0 0</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>3.9691 -31.9995 0 0 -0 0</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='pine_tree_big_1'>
-        <pose frame=''>-12.5725 -29.9486 0 0 -0 0</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>-12.5725 -29.9486 0 0 -0 0</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='pine_tree_big_2'>
-        <pose frame=''>-16.1727 28.4656 0 0 -0 0</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>-16.1727 28.4656 0 0 -0 0</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='pine_tree_big_3'>
-        <pose frame=''>6.13497 29.196 0 0 -0 0</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose frame=''>6.13497 29.196 0 0 -0 0</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
+          <pose frame=''>1.87 -0.199941 0.217981 0.000101 -0.000244 -1.96337</pose>
+          <velocity>-0 7e-06 8e-06 -3.2e-05 1e-06 -0</velocity>
+          <acceleration>-0.00057 0.000142 0.000174 0.007353 0.019051 -2.9e-05</acceleration>
+          <wrench>-1.4e-05 4e-06 4e-06 0 -0 0</wrench>
         </link>
       </model>
       <light name='sun'>
         <pose frame=''>0 0 10 0 -0 0</pose>
       </light>
     </state>
-    <model name='Marker0'>
+    <model name='Marker3'>
       <static>0</static>
       <link name='link'>
         <visual name='visual'>
@@ -4698,7 +3334,7 @@
           <max_contacts>10</max_contacts>
         </collision>
         <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
+        <enable_wind>1</enable_wind>
         <kinematic>0</kinematic>
         <sensor name='gps_tag' type='gps'>
           <always_on>1</always_on>
@@ -4733,222 +3369,27 @@
           <mass>1</mass>
         </inertial>
       </link>
-      <pose frame=''>10.5929 78.1332 0 0 -0 0</pose>
+      <pose frame=''>10.7202 34.9489 0 3.14159 1.57079 3.14159</pose>
     </model>
-    <model name='40x40wall'>
-      <pose frame=''>18 -20 0 0 -0 0</pose>
-      <link name='Wall_10'>
-        <collision name='Wall_10_Collision'>
-          <geometry>
-            <box>
-              <size>40.15 0.15 4</size>
-            </box>
-          </geometry>
-          <pose frame=''>0 0 2 0 -0 0</pose>
-          <max_contacts>10</max_contacts>
-          <surface>
-            <contact>
-              <ode/>
-            </contact>
-            <bounce/>
-            <friction>
-              <torsional>
-                <ode/>
-              </torsional>
-              <ode/>
-            </friction>
-          </surface>
-        </collision>
-        <visual name='Wall_10_Visual'>
-          <pose frame=''>0 0 2 0 -0 0</pose>
-          <geometry>
-            <box>
-              <size>40.15 0.15 4</size>
-            </box>
-          </geometry>
-          <material>
-            <script>
-              <uri>file://media/materials/scripts/gazebo.material</uri>
-              <name>Gazebo/Bricks</name>
-            </script>
-            <ambient>1 1 1 1</ambient>
-          </material>
-          <meta>
-            <layer>0</layer>
-          </meta>
-        </visual>
-        <pose frame=''>1e-06 20 0 0 -0 0</pose>
-        <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
-      </link>
-      <link name='Wall_12'>
-        <collision name='Wall_12_Collision'>
-          <geometry>
-            <box>
-              <size>40.15 0.15 4</size>
-            </box>
-          </geometry>
-          <pose frame=''>0 0 2 0 -0 0</pose>
-          <max_contacts>10</max_contacts>
-          <surface>
-            <contact>
-              <ode/>
-            </contact>
-            <bounce/>
-            <friction>
-              <torsional>
-                <ode/>
-              </torsional>
-              <ode/>
-            </friction>
-          </surface>
-        </collision>
-        <visual name='Wall_12_Visual'>
-          <pose frame=''>0 0 2 0 -0 0</pose>
-          <geometry>
-            <box>
-              <size>40.15 0.15 4</size>
-            </box>
-          </geometry>
-          <material>
-            <script>
-              <uri>file://media/materials/scripts/gazebo.material</uri>
-              <name>Gazebo/Bricks</name>
-            </script>
-            <ambient>1 1 1 1</ambient>
-          </material>
-          <meta>
-            <layer>0</layer>
-          </meta>
-        </visual>
-        <pose frame=''>-20 1e-06 0 0 -0 -1.5708</pose>
-        <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
-      </link>
-      <link name='Wall_14'>
-        <collision name='Wall_14_Collision'>
-          <geometry>
-            <box>
-              <size>40.15 0.15 4</size>
-            </box>
-          </geometry>
-          <pose frame=''>0 0 2 0 -0 0</pose>
-          <max_contacts>10</max_contacts>
-          <surface>
-            <contact>
-              <ode/>
-            </contact>
-            <bounce/>
-            <friction>
-              <torsional>
-                <ode/>
-              </torsional>
-              <ode/>
-            </friction>
-          </surface>
-        </collision>
-        <visual name='Wall_14_Visual'>
-          <pose frame=''>0 0 2 0 -0 0</pose>
-          <geometry>
-            <box>
-              <size>40.15 0.15 4</size>
-            </box>
-          </geometry>
-          <material>
-            <script>
-              <uri>file://media/materials/scripts/gazebo.material</uri>
-              <name>Gazebo/Bricks</name>
-            </script>
-            <ambient>1 1 1 1</ambient>
-          </material>
-          <meta>
-            <layer>0</layer>
-          </meta>
-        </visual>
-        <pose frame=''>20 1e-06 0 0 -0 -1.5708</pose>
-        <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
-      </link>
-      <link name='Wall_16'>
-        <collision name='Wall_16_Collision'>
-          <geometry>
-            <box>
-              <size>40.15 0.15 4</size>
-            </box>
-          </geometry>
-          <pose frame=''>0 0 2 0 -0 0</pose>
-          <max_contacts>10</max_contacts>
-          <surface>
-            <contact>
-              <ode/>
-            </contact>
-            <bounce/>
-            <friction>
-              <torsional>
-                <ode/>
-              </torsional>
-              <ode/>
-            </friction>
-          </surface>
-        </collision>
-        <visual name='Wall_16_Visual'>
-          <pose frame=''>0 0 2 0 -0 0</pose>
-          <geometry>
-            <box>
-              <size>40.15 0.15 4</size>
-            </box>
-          </geometry>
-          <material>
-            <script>
-              <uri>file://media/materials/scripts/gazebo.material</uri>
-              <name>Gazebo/Bricks</name>
-            </script>
-            <ambient>1 1 1 1</ambient>
-          </material>
-          <meta>
-            <layer>0</layer>
-          </meta>
-        </visual>
-        <pose frame=''>1e-06 -20 0 0 -0 0</pose>
-        <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
-      </link>
-      <static>1</static>
-    </model>
-    <model name='Marker0_clone'>
+    <model name='ground_plane_0'>
       <static>1</static>
       <link name='link'>
-        <visual name='visual'>
+        <collision name='collision'>
           <geometry>
-            <mesh>
-              <uri>model://marker0/meshes/Marker0.dae</uri>
-              <scale>1 1 1</scale>
-            </mesh>
-          </geometry>
-        </visual>
-        <collision name='base_link_collision'>
-          <pose frame=''>0 0 0 0 -0 0</pose>
-          <geometry>
-            <mesh>
-              <uri>model://marker0/meshes/Marker0.dae</uri>
-              <scale>1 1 1</scale>
-            </mesh>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
           </geometry>
           <surface>
             <contact>
-              <ode>
-                <max_vel>100</max_vel>
-                <min_depth>0.001</min_depth>
-              </ode>
+              <collide_bitmask>65535</collide_bitmask>
+              <ode/>
             </contact>
             <friction>
               <ode>
-                <mu>1</mu>
-                <mu2>1</mu2>
+                <mu>100</mu>
+                <mu2>50</mu2>
               </ode>
               <torsional>
                 <ode/>
@@ -4958,43 +3399,26 @@
           </surface>
           <max_contacts>10</max_contacts>
         </collision>
+        <visual name='visual'>
+          <cast_shadows>0</cast_shadows>
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+          <material>
+            <script>
+              <uri>file://media/materials/scripts/gazebo.material</uri>
+              <name>Gazebo/Grey</name>
+            </script>
+          </material>
+        </visual>
         <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
+        <enable_wind>1</enable_wind>
         <kinematic>0</kinematic>
-        <sensor name='gps_tag' type='gps'>
-          <always_on>1</always_on>
-          <update_rate>15</update_rate>
-          <gps>
-            <position_sensing>
-              <horizontal>
-                <noise type='gaussian'>
-                  <mean>0</mean>
-                  <stddev>2</stddev>
-                </noise>
-              </horizontal>
-              <vertical>
-                <noise type='gaussian'>
-                  <mean>0</mean>
-                  <stddev>2</stddev>
-                </noise>
-              </vertical>
-            </position_sensing>
-          </gps>
-        </sensor>
-        <inertial>
-          <pose frame=''>0 0 0 0 -0 0</pose>
-          <inertia>
-            <ixx>1</ixx>
-            <ixy>0</ixy>
-            <ixz>0</ixz>
-            <iyy>1</iyy>
-            <iyz>0</iyz>
-            <izz>1</izz>
-          </inertia>
-          <mass>1</mass>
-        </inertial>
       </link>
-      <pose frame=''>-0.009032 -0.99951 0.00404 1.37634 1.57075 1.3763</pose>
+      <pose frame=''>0 0 0 0 -0 0</pose>
     </model>
   </world>
 </sdf>
