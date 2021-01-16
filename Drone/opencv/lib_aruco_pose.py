@@ -55,7 +55,7 @@ class ArucoSingleTracker():
                 ):
         
         #rospy.init_node('cam_capture')
-        rospy.Subscriber('/iris_demo/c920/image_raw', Image, self.imageCb)
+        rospy.Subscriber('/iris_demo_9002/c920/image_raw', Image, self.imageCb)
         
         self.bridge = CvBridge()
      
@@ -232,8 +232,6 @@ class ArucoSingleTracker():
                     self._cap.release()
                     cv2.destroyAllWindows()
                     break
-
-            rospy.sleep(4)
             
             if not loop: return(marker_found, x, y, z, corners)
             

@@ -6,7 +6,7 @@ import select, termios, tty, rospy, argparse, mavros, threading, time, readline,
 
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
-from land_using_single_aruco import Land
+# from land_using_single_aruco import Land
 from opencv.lib_aruco_pose import ArucoSingleTracker
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Header, Float32, Float64, Empty
@@ -150,7 +150,7 @@ def imu_cb(data):
 
     acc = data.linear_acceleration.x
 
-    br.sendTransform((0, 0, 0), (-orientation_q.x, -orientation_q.y, -orientation_q.z, orientation_q.w), rospy.Time.now(), "base_link_att_comp", "base_link")
+    br.sendTransform((0, 0, 0), (-orientation_q.x, -orientation_q.y, -orientation_q.z, orientation_q.w), rospy.Time.now(), "base_link_att_comp", "base_link_1")
 
     if(abs(acc) > max_acc):
         max_acc = abs(acc)
@@ -311,19 +311,19 @@ def main():
     
     rate = rospy.Rate(hz)
 
-    aruco_tracker       = ArucoSingleTracker(id_to_find=id_to_find, marker_size=marker_size, show_video=False, camera_distortion=camera_distortion, camera_matrix=camera_matrix)
+    aruco_tracker       = ArucoSingleTracker(id_to_find=id_to_find, marker_size=marker_size, show_video=True, camera_distortion=camera_distortion, camera_matrix=camera_matrix)
 
     tf_buff = tf2_ros.Buffer()
     tf_listener = tf2_ros.TransformListener(tf_buff)
 
-    rospy.Subscriber("/mavros/imu/data", Imu, imu_cb)
-    # rospy.Subscriber("/mavros/altitude", Altitude, alt_cb)
-    rospy.Subscriber("/mavros/global_position/local", Odometry, gps_local_cb)
-    rospy.Subscriber("/mavros/local_position/pose", PoseStamped, pose_cb)
+    rospy.Subscriber("/drone1/mavros/imu/data", Imu, imu_cb)
+    # rospy.Subscriber("/drone1/mavros/altitude", Altitude, alt_cb)
+    rospy.Subscriber("/drone1/mavros/global_position/local", Odometry, gps_local_cb)
+    rospy.Subscriber("/drone1/mavros/local_position/pose", PoseStamped, pose_cb)
     rospy.Subscriber("/move_base_simple/goal", PoseStamped, calc_target_cb)
     rospy.Subscriber("/gazebo/model_states", ModelStates, get_pos_cb)
-    rospy.Subscriber("/mavros/local_position/velocity_local", TwistStamped, velocity_cb)
-    rospy.Subscriber("/mavros/state", State, armed_cb)
+    rospy.Subscriber("/drone1/mavros/local_position/velocity_local", TwistStamped, velocity_cb)
+    rospy.Subscriber("/drone1/mavros/state", State, armed_cb)
 
     #time subscriber
     rospy.Subscriber('clock', Clock, clock_cb)
@@ -335,12 +335,12 @@ def main():
     pub5 = rospy.Publisher('ekf_path', Path, queue_size=1)
     pub6 = rospy.Publisher('mpc_path', Path, queue_size=1)
 
-    set_arming = rospy.ServiceProxy('/mavros/cmd/arming', CommandBool)
-    set_mode = rospy.ServiceProxy('/mavros/set_mode', SetMode)
-    set_takeoff = rospy.ServiceProxy('/mavros/cmd/takeoff', CommandTOL)
-    set_landing = rospy.ServiceProxy('/mavros/cmd/land', CommandTOL)
+    set_arming = rospy.ServiceProxy('/drone1/mavros/cmd/arming', CommandBool)
+    set_mode = rospy.ServiceProxy('/drone1/mavros/set_mode', SetMode)
+    set_takeoff = rospy.ServiceProxy('/drone1/mavros/cmd/takeoff', CommandTOL)
+    set_landing = rospy.ServiceProxy('/drone1/mavros/cmd/land', CommandTOL)
 
-    tracker = Land(pub1)
+    # tracker = Land(pub1)
 
     path = Path()
     ekf_path = Path()
@@ -353,7 +353,7 @@ def main():
 
     mavros.command.arming(True)
     if(cart_u < 1):
-        # set_mode(0, 'GUIDED')
+        set_mode(0, 'GUIDED')
 
         set_takeoff(0, 0, None, None, 10)
         # set_mode(0, 'AUTO.TAKEOFF')
@@ -415,7 +415,7 @@ def main():
         # desired_yaw = (math.atan2(desired_n - cart_n, desired_e - cart_e) * 180 / 3.1416)
         # desired_yaw = 360.0 + desired_yaw if desired_yaw < 0 else desired_yaw
 
-        aruco_cam_pos = tf2_geometry_msgs.PointStamped(header=Header(stamp=rospy.Time.now(), frame_id='base_link'))
+        aruco_cam_pos = tf2_geometry_msgs.PointStamped(header=Header(stamp=rospy.Time.now(), frame_id='base_link_1'))
         aruco_cam_pos.point.x = y_cm/100
         aruco_cam_pos.point.y = x_cm/100
         aruco_cam_pos.point.z = z_cm/100
@@ -433,11 +433,11 @@ def main():
             aruco_e = p.point.x
             aruco_n = p.point.y
             aruco_u = p.point.z
-            velocity_e_des, cached_var, diff = MPC_solver(aruco_e, 0, limit_e, 0, n, t, True, variables = cached_var, vel_limit = 1.5, acc=0, curr_vel=vel_e)
+            velocity_e_des, cached_var, diff = MPC_solver(aruco_e, 0, limit_e, 0, n, t, True, variables = cached_var, vel_limit = 1, acc=0, curr_vel=vel_e)
             e_array = cached_var.get("points")
-            velocity_n_des, cached_var, _ = MPC_solver(aruco_n, 0, limit_n, 0, n, t, True, variables = cached_var, vel_limit = 1.5, acc=0, curr_vel=vel_n)
+            velocity_n_des, cached_var, _ = MPC_solver(aruco_n, 0, limit_n, 0, n, t, True, variables = cached_var, vel_limit = 1, acc=0, curr_vel=vel_n)
             n_array = cached_var.get("points")
-            velocity_u_des, cached_var, _ = MPC_solver(aruco_u, 0, limit_u, 0, n, t, True, variables = cached_var, vel_limit = 1.5, acc=0, curr_vel=vel_u, debug=False)
+            velocity_u_des, cached_var, _ = MPC_solver(aruco_u, 0, limit_u, 0, n, t, True, variables = cached_var, vel_limit = 1, acc=0, curr_vel=vel_u, debug=False)
             u_array = cached_var.get("points")
             mpc_point_arr = np.transpose(np.row_stack((e_array, n_array, u_array)))
 
@@ -561,8 +561,8 @@ def main():
 
         
 if __name__ == "__main__":
-    mavros.set_namespace("/mavros")
-    pub1 = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel', TwistStamped, queue_size = 1)
+    mavros.set_namespace("/drone1/mavros")
+    pub1 = rospy.Publisher('/drone1/mavros/setpoint_velocity/cmd_vel', TwistStamped, queue_size = 1)
     path = Path() 
     np.set_printoptions(precision=None, threshold=None, edgeitems=None, linewidth=1000, suppress=None, nanstr=None, infstr=None, formatter=None)
     main()

@@ -32,44 +32,50 @@ def gazebo_cb(msg):
 	gazebo_x_vel = -msg.twist[0].linear.y
 
 
-def mavros_cb(msg):
+def mavros_vel_cb(msg):
 	global mavros_e_vel
 
 	mavros_e_vel = msg.twist.linear.x 
 
+
+def comm_vel_cb(msg):
+	global commanded_e_vel
+
+	commanded_e_vel = msg.twist.linear.x
 
 rospy.init_node('step_response')
 
 rate = rospy.Rate(20)
 
 rospy.Subscriber('/gazebo/model_states', ModelStates, gazebo_cb)
-rospy.Subscriber('/mavros/local_position/velocity_local', TwistStamped, mavros_cb)
+rospy.Subscriber('drone1/mavros/local_position/velocity_local', TwistStamped, mavros_vel_cb)
+rospy.Subscriber('/drone1/mavros/setpoint_velocity/cmd_vel', TwistStamped, comm_vel_cb)
 
-pub = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel', TwistStamped, queue_size=1)
+# pub = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel', TwistStamped, queue_size=1)
 
-while(not rospy.is_shutdown() and time_elapsed < 12.0):
+while(not rospy.is_shutdown() and time_elapsed < 20.0):
 	time_elapsed = time.time() - start_timer
 
 	if(time_elapsed < 1.0):
-		pub.publish(twist_obj(0, 0, 0, 0, 0, 0))
+		# pub.publish(twist_obj(0, 0, 0, 0, 0, 0))
 
-		plot_arrays[0].append(0.0)
+		plot_arrays[0].append(commanded_e_vel)
 		plot_arrays[1].append(gazebo_x_vel)
 		plot_arrays[2].append(mavros_e_vel)
 		plot_arrays[3].append(time_elapsed)
 
 	elif(time_elapsed >= 1.0 and time_elapsed <= 7.0):
-		pub.publish(twist_obj(1, 0, 0, 0, 0, 0))
+		# pub.publish(twist_obj(1, 0, 0, 0, 0, 0))
 
-		plot_arrays[0].append(1.0)
+		plot_arrays[0].append(commanded_e_vel)
 		plot_arrays[1].append(gazebo_x_vel)
 		plot_arrays[2].append(mavros_e_vel)
 		plot_arrays[3].append(time_elapsed)
 
 	else:
-		pub.publish(twist_obj(0, 0, 0, 0, 0, 0))
+		# pub.publish(twist_obj(0, 0, 0, 0, 0, 0))
 
-		plot_arrays[0].append(0.0)
+		plot_arrays[0].append(commanded_e_vel)
 		plot_arrays[1].append(gazebo_x_vel)
 		plot_arrays[2].append(mavros_e_vel)
 		plot_arrays[3].append(time_elapsed)
@@ -80,7 +86,7 @@ while(not rospy.is_shutdown() and time_elapsed < 12.0):
 plt.plot(plot_arrays[3], plot_arrays[0], plot_arrays[3], plot_arrays[2])
 plt.xlabel('Time in s')
 plt.ylabel('Velocity in m/s')
-plt.ylim(-0.5,2)
+# plt.ylim(-0.5,2)
 plt.legend()
 # plt.plot(plot_arrays[3], plot_arrays[0])
 print(len(plot_arrays[0]), len(plot_arrays[1]), len(plot_arrays[2]), len(plot_arrays[3]))
