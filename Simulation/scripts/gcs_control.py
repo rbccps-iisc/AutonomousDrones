@@ -133,7 +133,7 @@ def main():
 			pub_cmd.publish(cmd)
 
 
-			time.sleep(50)
+			time.sleep(20)
 			if robot[0].armed:
 				cmd.command = 'drone1 do mission'
 				pub_cmd.publish(cmd)

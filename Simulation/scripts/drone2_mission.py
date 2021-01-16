@@ -296,8 +296,8 @@ def normal_mission(home_lat,home_lon,home_alt,toh,dLat_meters,dLon_meters,low,cr
 	dLat, dLon = dis_to_gps(dLat_meters,dLon_meters)
 
 	#Clear any existing mission on drone2 (if any)
-	waypoints_clean = rospy.ServiceProxy('drone2/mavros/mission/clear', WaypointClear)
-	waypoints_clean.call()
+	#waypoints_clean = rospy.ServiceProxy('drone2/mavros/mission/clear', WaypointClear)
+	#waypoints_clean.call()
 
 	#Create waypoints for function by calling waypoint_dataset() [defined above]
 	W = waypoint_dataset(home_lat,home_lon,dLat,dLon,toh)
@@ -379,7 +379,7 @@ def go_to_home(home_lat,home_lon,home_alt,toh):
 		# go to home and hover
 		home_pub.publish(land_pos)
 
-		time.sleep(20)
+		time.sleep(15)
 		
 		#Land
 		set_land(0, 0, None, None, 0)
@@ -461,7 +461,7 @@ def drone_bat():
 				bat = 0
 		if not armed and counter%1==0:
 			if bat<100:
-				bat = bat + 5
+				bat = bat + 100
 			else:
 				bat = 100
 
