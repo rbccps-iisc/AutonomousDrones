@@ -8,7 +8,7 @@
     <arg name="respawn_gazebo" default="false"/>
 
     <!-- World -->
-    <arg name="world" default="$(find multidrone_mission)/Simulation/worlds/iris_multiuav.world"/>
+    <arg name="world" default="$(find multidrone_mission)/Simulation/worlds/iris_multiuav_2.world"/>
 
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
         <arg name="gui" value="$(arg gui)"/>
