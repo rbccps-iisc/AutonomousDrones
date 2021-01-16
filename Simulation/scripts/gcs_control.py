@@ -34,6 +34,7 @@ class drone_params(object):
 	def __init__(self):
 		self.cur_lat = 0
 		self.cur_lon = 0
+		self.cur_absalt = 0
 		self.cur_x = 0
 		self.cur_y = 0
 		self.cur_alt = 0
@@ -48,11 +49,12 @@ class drone_params(object):
 	def global_pos_cb(self, data):
 		self.cur_lat = data.latitude
 		self.cur_lon = data.longitude
+		self.cur_absalt = data.altitude
 
 	def local_pos_cb(self,data):
-		self.cur_x = data.pose.position.x
-		self.cur_y = data.pose.position.y
-		self.cur_alt = data.pose.position.z
+		self.cur_x = data.pose.pose.position.x
+		self.cur_y = data.pose.pose.position.y
+		self.cur_alt = data.pose.pose.position.z
 
 	def ori_cb(self, data):
 		orientation_q = data.orientation
@@ -84,23 +86,33 @@ def main():
 		robot[i] = drone_params()
 
 	rospy.Subscriber('/drone1/mavros/global_position/global', NavSatFix, robot[0].global_pos_cb)
-	rospy.Subscriber('/drone1/mavros/local_position/pose', PoseStamped, robot[0].local_pos_cb)
+	rospy.Subscriber('/drone1/mavros/global_position/local', Odometry, robot[0].local_pos_cb)
 	rospy.Subscriber('/drone1/mavros/imu/data', Imu, robot[0].ori_cb)
 	rospy.Subscriber('/drone1/mavros/state', State, robot[0].armed_cb)
 	rospy.Subscriber('/drone1/mavros/mission/waypoints', WaypointList, robot[0].waypoint_cb)
 	rospy.Subscriber('/drone1_status', String, robot[0].status_cb)
 	rospy.Subscriber('/drone1_battery', Int16, robot[0].bat_cb)
+	pub_home_1 = rospy.Publisher('/drone1/mavros/global_position/home', HomePosition, queue_size=1)
 
 	rospy.Subscriber('/drone2/mavros/global_position/global', NavSatFix, robot[1].global_pos_cb)
-	rospy.Subscriber('/drone2/mavros/local_position/pose', PoseStamped, robot[1].local_pos_cb)
+	rospy.Subscriber('/drone2/mavros/global_position/local', Odometry, robot[1].local_pos_cb)
 	rospy.Subscriber('/drone2/mavros/imu/data', Imu, robot[1].ori_cb)
 	rospy.Subscriber('/drone2/mavros/state', State, robot[1].armed_cb)
 	rospy.Subscriber('/drone2/mavros/mission/waypoints', WaypointList, robot[1].waypoint_cb)
 	rospy.Subscriber('/drone2_status', String, robot[1].status_cb)
 	rospy.Subscriber('/drone2_battery', Int16, robot[1].bat_cb)
-
+	pub_home_2 = rospy.Publisher('/drone2/mavros/global_position/home', HomePosition, queue_size=1)
+	
+	pub_home = HomePosition()
+	pub_home.geo.latitude = robot[0].cur_lat
+	pub_home.geo.longitude = robot[0].cur_lon
+	pub_home.geo.altitude = robot[0].cur_absalt
+	
+	pub_home_1.publish(pub_home)
+	pub_home_2.publish(pub_home)
+		
 	#rospy.Subscriber('/drone3/mavros/global_position/global', NavSatFix, robot[2].global_pos_cb)
-	#rospy.Subscriber('/drone3/mavros/local_position/pose', PoseStamped, robot[2].local_pos_cb)
+	#rospy.Subscriber('/gazebo/model_states', PoseStamped, robot[2].local_pos_cb)
 	#rospy.Subscriber('/drone3/mavros/imu/data', Imu, robot[2].ori_cb)
 	#rospy.Subscriber('/drone3/mavros/state', State, robot[2].armed_cb)
 	#rospy.Subscriber('/drone3/mavros/mission/waypoints', WaypointList, waypoint_cb)
@@ -172,7 +184,7 @@ def main():
 					pub_cmd.publish(cmd)
 					time.sleep(1)
 
-					while abs(robot[1].cur_x - robot[0].cur_x) >= 0.3 and abs(robot[1].cur_y - robot[0].cur_y) >= 0.3 :
+					while abs(robot[1].cur_x - robot[0].cur_x) >= 0.5 and abs(robot[1].cur_y - robot[0].cur_y) >= 0.5 :
 						cmd.command = 'none'
 						pub_cmd.publish(cmd)
 						time.sleep(1)
@@ -222,7 +234,7 @@ def main():
 					pub_cmd.publish(cmd)
 					time.sleep(1)
 
-					while abs(robot[0].cur_x - robot[1].cur_x) >= 0.1 and abs(robot[0].cur_y - robot[1].cur_y) >= 0.1 :
+					while abs(robot[0].cur_x - robot[1].cur_x) >= 0.5 and abs(robot[0].cur_y - robot[1].cur_y) >= 0.5 :
 						cmd.command = 'none'
 						pub_cmd.publish(cmd)
 						time.sleep(1)

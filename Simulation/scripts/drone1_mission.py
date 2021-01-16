@@ -296,8 +296,8 @@ def normal_mission(home_lat,home_lon,home_alt,toh,dLat_meters,dLon_meters,low,cr
 	dLat, dLon = dis_to_gps(dLat_meters,dLon_meters)
 
 	#Clear any existing mission on drone1 (if any)
-	#waypoints_clean = rospy.ServiceProxy('drone1/mavros/mission/clear', WaypointClear)
-	#waypoints_clean.call()
+	waypoints_clean = rospy.ServiceProxy('drone1/mavros/mission/clear', WaypointClear)
+	waypoints_clean.call()
 
 	#Create waypoints for function by calling waypoint_dataset() [defined above]
 	W = waypoint_dataset(home_lat,home_lon,dLat,dLon,toh)
@@ -308,10 +308,11 @@ def normal_mission(home_lat,home_lon,home_alt,toh,dLat_meters,dLon_meters,low,cr
 	set_mode = rospy.ServiceProxy('/drone1/mavros/set_mode', SetMode)
 
 	#Uploading waypoints and mission
-	set_waypoint(start_index=0, waypoints=W)
+	print(gcs_cmd_wp)
+	set_waypoint(start_index=gcs_cmd_wp, waypoints=W)
 
 	#set current waypoint to 1st point
-	set_cur_waypoint(wp_seq=gcs_cmd_wp)
+	#set_cur_waypoint(wp_seq=gcs_cmd_wp)
 
 	#Subscriber function to control mission parameters
 	rospy.Subscriber('/drone1/mavros/mission/waypoints', WaypointList, control_mission_cb)
@@ -393,7 +394,7 @@ def go_to_home(home_lat,home_lon,home_alt,toh):
 
 #Function to subscribe to the GCS command and take action accordingly (runs on sepatate thread)
 def drone_sub(home_lat,home_lon,home_alt,toh,dLat_meters,dLon_meters,safe,low,critical):
-	global status, gcs_cmd_str, armed, cur_alt
+	global status, gcs_cmd_str, armed, cur_alt, gcs_cmd_wp
 
 	#setting up mavros services
 	mavros.set_namespace('drone1/mavros')
@@ -421,6 +422,7 @@ def drone_sub(home_lat,home_lon,home_alt,toh,dLat_meters,dLon_meters,safe,low,cr
 			pub_status.publish('drone1 need replacement')
 		
 		if gcs_cmd_str == 'drone1 replacement ready':			#GCS command for drone1 to suggest that another drone is available for replacement
+			print(gcs_cmd_wp)			
 			print('drone1 copy preparing for replacement')
 			pub_status.publish('drone1 copy preparing for replacement')
 			hower_and_wait(toh,home_alt)
@@ -445,7 +447,6 @@ def drone_sub(home_lat,home_lon,home_alt,toh,dLat_meters,dLon_meters,safe,low,cr
 #Function to simulate and publish charging and discharging of battery level (runs on sepatate thread)
 def drone_bat():
 	global bat, status, armed
-	counter = 0
 
 	#Subscriber function to check if drone is armed or not 
 	rospy.Subscriber('drone1/mavros/state', State, armed_cb)
@@ -455,21 +456,21 @@ def drone_bat():
 	
 	while not rospy.is_shutdown():
 		
-		if armed and counter%50==0:
+		if armed:
 			if bat>0:
 				bat = bat - 5
+				time.sleep(5)
 			else:
 				bat = 0
-		if not armed and counter%1==0:
+		if not armed:
 			if bat<100:
 				bat = bat + 100
 			else:
 				bat = 100
-
+		
 		pub_bat.publish(bat)
 		#print('drone1 battery percent = %d' %(bat))
 		#print('drone1 status = %s' %(status))
-		counter = counter + 1
 		rospy.sleep(0.1)
 
 
