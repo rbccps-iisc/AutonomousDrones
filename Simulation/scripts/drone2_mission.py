@@ -81,7 +81,8 @@ def control_mission_cb(data):
 	set_cmd = rospy.ServiceProxy('/drone2/mavros/cmd/command', CommandLong)
 
 	#command = 178 (for setting ground speed) ; param2 = speed (m/s)
-	set_cmd(command=178, param2=1)
+	if cur_wp!=0:
+		set_cmd(command=178, param2=2)
 
 	#command = 115 (for setting yaw) ; param1 = yaw angle (deg) ; param2 = yaw speed (deg/s) ; param4 = 0 (global frame)
 	if cur_wp==2:
@@ -91,7 +92,8 @@ def control_mission_cb(data):
 	if cur_wp==4:
 		set_cmd(command=115, param1=180, param2=45, param4=0)	# W[3] to W[4] (Refer to below diageam) (param1=180 -> Facing South)
 	if cur_wp==5:
-		set_cur_waypoint(wp_seq=1)								# W[5]==W[1] (Refer to below diageam) (Required to keep mission continued)
+		set_cur_waypoint(wp_seq=1)				# W[5]==W[1] (Refer to below diageam) (Required to keep mission continued)
+	if cur_wp==1:
 		set_cmd(command=115, param1=270, param2=45, param4=0)	# W[4] to W[5]/W[1] (Refer to below diageam) (param1=270 -> Facing West)
 
 
@@ -237,7 +239,7 @@ def go_to_location(home_lat,home_lon,home_alt,toh,dLat_meters,dLon_meters,safe):
 	if math.isnan(gcs_cmd_height):
 		gcs_cmd_height = toh
 	if math.isnan(gcs_cmd_yaw):
-		gcs_cmd_yaw = math.pi/2
+		gcs_cmd_yaw = 0
 
 	#setting up mavros services
 	mavros.set_namespace('drone2/mavros')
@@ -296,8 +298,8 @@ def normal_mission(home_lat,home_lon,home_alt,toh,dLat_meters,dLon_meters,low,cr
 	dLat, dLon = dis_to_gps(dLat_meters,dLon_meters)
 
 	#Clear any existing mission on drone2 (if any)
-	#waypoints_clean = rospy.ServiceProxy('drone2/mavros/mission/clear', WaypointClear)
-	#waypoints_clean.call()
+	waypoints_clean = rospy.ServiceProxy('drone2/mavros/mission/clear', WaypointClear)
+	waypoints_clean.call()
 
 	#Create waypoints for function by calling waypoint_dataset() [defined above]
 	W = waypoint_dataset(home_lat,home_lon,dLat,dLon,toh)
@@ -310,11 +312,13 @@ def normal_mission(home_lat,home_lon,home_alt,toh,dLat_meters,dLon_meters,low,cr
 	#Uploading waypoints and mission
 	set_waypoint(start_index=0, waypoints=W)
 
+	#Subscriber function to control mission parameters
+	rospy.Subscriber('/drone2/mavros/mission/waypoints', WaypointList, control_mission_cb)
+
 	#set current waypoint to 1st point
 	set_cur_waypoint(wp_seq=gcs_cmd_wp)
 
-	#Subscriber function to control mission parameters
-	rospy.Subscriber('/drone2/mavros/mission/waypoints', WaypointList, control_mission_cb)
+	#time.sleep(1)
 
 	#For doing mission
 	if armed and cur_alt>=0.95*toh:
@@ -444,7 +448,6 @@ def drone_sub(home_lat,home_lon,home_alt,toh,dLat_meters,dLon_meters,safe,low,cr
 #Function to simulate and publish charging and discharging of battery level (runs on sepatate thread)
 def drone_bat():
 	global bat, status, armed
-	counter = 0
 
 	#Subscriber function to check if drone is armed or not 
 	rospy.Subscriber('drone2/mavros/state', State, armed_cb)
@@ -454,12 +457,13 @@ def drone_bat():
 	
 	while not rospy.is_shutdown():
 		
-		if armed and counter%50==0:
+		if armed:
 			if bat>0:
-				bat = bat - 5
+				bat = bat - 1
+				time.sleep(1)
 			else:
 				bat = 0
-		if not armed and counter%1==0:
+		if not armed:
 			if bat<100:
 				bat = bat + 100
 			else:
@@ -468,7 +472,6 @@ def drone_bat():
 		pub_bat.publish(bat)
 		#print('drone2 battery percent = %d' %(bat))
 		#print('drone2 status = %s' %(status))
-		counter = counter + 1
 		rospy.sleep(0.1)
 
 
@@ -480,10 +483,10 @@ if __name__ == '__main__':
 	parser.add_argument('--check', default=False, type=bool)
 	parser.add_argument('--home_lat', default=13.0272048)				#GPS Latitude coordinate of home location in Current Airfield
 	parser.add_argument('--home_lon', default=77.563607)				#GPS Longitude coordinate of home location in Current Airfield
-	parser.add_argument('--home_alt', default=915.0)					#Altitude of home location in Current Airfield
-	parser.add_argument('--toh', default=6, type=int)					#Desired Takeoff height for mission
-	parser.add_argument('--surveillance_dis_x', default=6, type=int)	#Distance to cover from home location, in both North and South direction (in meters)
-	parser.add_argument('--surveillance_dis_y', default=6, type=int)	#Distance to cover from home location, in both East and West direction (in meters)
+	parser.add_argument('--home_alt', default=931)					#Altitude of home location in Current Airfield
+	parser.add_argument('--toh', default=8, type=int)					#Desired Takeoff height for mission
+	parser.add_argument('--surveillance_dis_x', default=12, type=int)	#Distance to cover from home location, in both North and South direction (in meters)
+	parser.add_argument('--surveillance_dis_y', default=18, type=int)	#Distance to cover from home location, in both East and West direction (in meters)
 	parser.add_argument('--safe_bat',default=80, type=int)				#Minimum safe battery level to authorize takeoff (percentage)
 	parser.add_argument('--low_bat', default=60, type=int)				#Low battery level (percentage)
 	parser.add_argument('--critical_bat', default=40, type=int)			#Critical battery level (percentage)
