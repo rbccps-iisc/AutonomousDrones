@@ -6,6 +6,7 @@ import select, termios, tty, rospy, argparse, mavros, threading, time, readline,
 
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
+from land_using_single_aruco import Land
 from opencv.lib_aruco_pose import ArucoSingleTracker
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Header, Float32, Float64, Empty
@@ -259,8 +260,6 @@ def main():
     
     rate = rospy.Rate(hz)
 
-    aruco_tracker       = ArucoSingleTracker(id_to_find=id_to_find, marker_size=marker_size, show_video=True, camera_distortion=camera_distortion, camera_matrix=camera_matrix)
-
     tf_buff = tf2_ros.Buffer()
     tf_listener = tf2_ros.TransformListener(tf_buff)
 
@@ -291,11 +290,7 @@ def main():
     path = Path()
     ekf_path = Path()
     mpc_path = Path()
-    mae_append = 1000
-
-    last_vel = 0
-
-    # time.sleep(20)
+    max_append = 1000
 
     mavros.command.arming(True)
     if(cart_u < 1):
@@ -306,18 +301,7 @@ def main():
 
     while cart_u < 9.5 and not rospy.is_shutdown(): continue
 
-    #contact force subscriber
-    # rospy.Subscriber('/bumper_states', ContactsState, contact_cb)
-
-    for i in range(0, 10):
-        pub1.publish(twist_obj(0, 0, 0, 0.0, 0.0, 0.0))
-        time.sleep(0.01)
-
-    # set_mode(0, 'OFFBOARD')
-
     while not rospy.is_shutdown():
-        marker_found, x_cm, y_cm, z_cm, _ = aruco_tracker.track(loop=False)
-
     	# yaw = 360.0 + yaw if yaw < 0 else yaw
 
         if home_u_recorded is False and cart_u != 0 and yaw != 0:
@@ -361,54 +345,18 @@ def main():
         # desired_yaw = (math.atan2(desired_n - cart_n, desired_e - cart_e) * 180 / 3.1416)
         # desired_yaw = 360.0 + desired_yaw if desired_yaw < 0 else desired_yaw
 
-        aruco_cam_pos = tf2_geometry_msgs.PointStamped(header=Header(stamp=rospy.Time.now(), frame_id='base_link'))
-        aruco_cam_pos.point.x = y_cm/100
-        aruco_cam_pos.point.y = x_cm/100
-        aruco_cam_pos.point.z = z_cm/100
-
-        try:
-            p = tf_buff.transform(aruco_cam_pos, "base_link_att_comp", timeout=rospy.Duration(0.1))
-
-        except :
-            print('Oops')
 
         ################################ MPC ###################################
-        if(marker_found):
-            detected_aruco = True
 
-            aruco_e = p.point.x
-            aruco_n = p.point.y
-            aruco_u = p.point.z
-            velocity_e_des, cached_var, diff = MPC_solver(aruco_e, 0, limit_e, 0, n, t, True, variables = cached_var, vel_limit = 1, acc=0, curr_vel=vel_e)
-            e_array = cached_var.get("points")
-            velocity_n_des, cached_var, _ = MPC_solver(aruco_n, 0, limit_n, 0, n, t, True, variables = cached_var, vel_limit = 1, acc=0, curr_vel=vel_n)
-            n_array = cached_var.get("points")
-            velocity_u_des, cached_var, _ = MPC_solver(aruco_u, 0, limit_u, 0, n, t, True, variables = cached_var, vel_limit = 0.8, acc=0.2, curr_vel=vel_u, debug=False)
-            u_array = cached_var.get("points")
-            mpc_point_arr = np.transpose(np.row_stack((e_array, n_array, u_array)))
+        velocity_e_des, cached_var, diff = MPC_solver(cart_e, aruco_e, limit_e, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc = 0, curr_vel=vel_e)
+        e_array = cached_var.get("points")
+        velocity_n_des, cached_var, _ = MPC_solver(cart_n, aruco_n, limit_n, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc = 0, curr_vel=vel_n)
+        n_array = cached_var.get("points")
+        velocity_u_des, cached_var, _ = MPC_solver(cart_u, aruco_u, limit_u, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc = 0, curr_vel=vel_u)
+        u_array = cached_var.get("points")
+        # print("Marker unseen\t",aruco_e, velocity_e_des)
 
-            acc = diff / t
-            # print("Marker seen\t", aruco_e, -y_cm, velocity_e_des)
-
-
-        elif(not marker_found and not detected_aruco):
-            start_time = rospy.Time.now()
-
-            velocity_e_des = -1.5
-            velocity_n_des = 0
-            velocity_u_des = 0
-        # print(p)
-        
-        else:
-            velocity_e_des, cached_var, diff = MPC_solver(cart_e, aruco_e, limit_e, 0, n, t, True, variables = cached_var, vel_limit = 1.5, acc = 0, curr_vel=vel_e)
-            e_array = cached_var.get("points")
-            velocity_n_des, cached_var, _ = MPC_solver(cart_n, aruco_n, limit_n, 0, n, t, True, variables = cached_var, vel_limit = 1.5, acc = 0, curr_vel=vel_n)
-            n_array = cached_var.get("points")
-            velocity_u_des, cached_var, _ = MPC_solver(cart_u, aruco_u, limit_u, 0, n, t, True, variables = cached_var, vel_limit = 1.5, acc = 0, curr_vel=vel_u)
-            u_array = cached_var.get("points")
-            # print("Marker unseen\t",aruco_e, velocity_e_des)
-
-            mpc_point_arr = np.transpose(np.row_stack((e_array, n_array, u_array)))
+        mpc_point_arr = np.transpose(np.row_stack((e_array, n_array, u_array)))
         
         print("Generated vel:\t",velocity_e_des,"Current vel:\t", vel_e, "Aruco E:\t", aruco_e)
         # print("Aruco E:\t", aruco_e, "Aruco N:\t", aruco_n)
@@ -418,10 +366,6 @@ def main():
 
         pub1.publish(twist_obj(velocity_e_des, velocity_n_des, velocity_u_des, 0.0, 0.0, 0.0))
         # pub1.publish(twist_obj(velocity_e_des, 0, 0, 0.0, 0.0, 0.0))
-
-        if(acc > abs(max_acc)):
-            max_acc = abs(acc)
-            # print("MPC Max:",max_acc)
 
         if(cart_u < 1):
             # set_landing(0, 0, None, None, 0)
@@ -497,7 +441,7 @@ def main():
             pub5.publish(ekf_path)
             pub6.publish(mpc_path)
 
-            if cont > mae_append and len(path.poses) != 0 and len(ekf_path.poses):
+            if cont > max_append and len(path.poses) != 0 and len(ekf_path.poses):
                     path.poses.pop(0)
                     ekf_path.poses.pop(0)
 

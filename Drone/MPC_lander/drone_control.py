@@ -31,7 +31,7 @@ from MPC import MPC_solver
 global R
 global roll, pitch, yaw
 
-hz                                      = 10.0
+hz                                      = 20.0
 n                                       = 15
 t                                       = 1/hz
 print(t, hz)
@@ -87,9 +87,9 @@ if not path.isfile('test_land_algo_params_2n_y.csv'):
     writer.writeheader()
     csvfile.close()
 
-csvfile = open('test_land_algo_params_2n_y.csv','a')
+# csvfile = open('test_land_algo_params_2n_y.csv','a')
 
-writer = csv.writer(csvfile)
+# writer = csv.writer(csvfile)
 
 
 def clamp(num, value):
@@ -124,7 +124,7 @@ def contact_cb(data):
         x_err = gz_x
         y_err = gz_y
         r_err = sqrt(pow(x_err,2)+pow(y_err,2))
-        print(current_time, start_time)
+        # print(current_time, start_time)
         t = (current_time-start_time).to_sec()
         f = contact[0].total_wrench.force.z
         writer.writerow([int(aruco_x), int(aruco_y), int(x_0*100), int(y_0*100), int(r_0*100), int(x_err*100), int(y_err*100), int(r_err*100), t, int(f)])
@@ -155,28 +155,6 @@ def imu_cb(data):
     if(abs(acc) > max_acc):
         max_acc = abs(acc)
         print("Measured max:\t",acc)
-
-
-def gps_global_cb(data):
-    R = 6371000
-    lat = data.latitude
-    lon = data.longitude
-    alt = data.altitude
-
-    global cart_x, cart_y, cart_z, home_x, home_y, home_xy_recorded, discard_samples
-
-    cart_x = R * math.cos(lat) * math.cos(lon)
-    cart_y = R * math.cos(lat) * math.sin(lon)
-    # cart_z = R * math.sin(lat)
-
-    if home_xy_recorded is False and cart_x != 0 and cart_y != 0:
-        home_x = cart_x
-        home_y = cart_y
-
-        discard_samples = discard_samples - 1
-
-        if(discard_samples <= 0):
-            home_xy_recorded = True
 
 
 def gps_local_cb(data):
@@ -258,41 +236,12 @@ def twist_obj(x, y, z, a, b, c):
     return move_cmd
 
 
-def alt_cb(data):
-    global home_z, cart_z, home_z_recorded
-    cart_z = data.monotonic / 1
-
-
 def gazebo_cb(data):
     global br
     global cont,rate, pos, quat 
 
     pos = data.pose[1].position
     quat = data.pose[1].orientation
-
-
-def plot(vel_y):
-    global cart_y, desired_y, start_y
-
-    timer = 0
-
-    if(math.fabs(vel_y) >= 0.01):
-        y_diff = Float32()
-        try:
-            y = math.fabs((cart_y - start_y))/math.fabs((desired_y - start_y))
-            if(y < 2):
-                y_diff.data = y
-                y_pub.publish(y_diff)
-
-        except ZeroDivisionError as e:
-            print("Oops")
-
-        # print(cart_y - start_y,desired_y - start_y, start_y,y_diff.data)
-
-    elif(math.fabs(vel_y) < 0.01):
-        start_y = desired_y
-
-        print("-------------------Ready-------------------")
 
 
 def armed_cb(data):
@@ -351,25 +300,25 @@ def main():
 
     last_vel = 0
 
-    # time.sleep(20)
+    # time.sleep(15)
 
     mavros.command.arming(True)
     if(cart_z < 1):
         # set_mode(0, 'GUIDED')
 
-        set_takeoff(0, 0, None, None, 10)
-        # set_mode(0, 'AUTO.TAKEOFF')
+        # set_takeoff(0, 0, None, None, 10)
+        set_mode(0, 'AUTO.TAKEOFF')
 
     while cart_z < 9.5: continue
 
     #contact force subscriber
-    rospy.Subscriber('/bumper_states', ContactsState, contact_cb)
+    # rospy.Subscriber('/bumper_states', ContactsState, contact_cb)
 
-    for i in range(0, 50):
+    for i in range(0, 10):
         pub1.publish(twist_obj(0, 0, 0, 0.0, 0.0, 0.0))
         time.sleep(0.01)
 
-    # set_mode(0, 'OFFBOARD')
+    set_mode(0, 'OFFBOARD')
 
     while not rospy.is_shutdown():
         marker_found, x_cm, y_cm, z_cm, _ = aruco_tracker.track(loop=False)
@@ -439,7 +388,7 @@ def main():
             x_array = cached_var.get("points")
             velocity_y_des, cached_var, _ = MPC_solver(aruco_y, 0, limit_y, 0, n, t, True, variables = cached_var, vel_limit = 1, acc=0, curr_vel=vel_y)
             y_array = cached_var.get("points")
-            velocity_z_des, cached_var, _ = MPC_solver(aruco_z, 0, limit_z, 0, n, t, True, variables = cached_var, vel_limit = 1, acc=0, curr_vel=vel_z, debug=False)
+            velocity_z_des, cached_var, _ = MPC_solver(aruco_z, 0, limit_z, 0, n, t, True, variables = cached_var, vel_limit = 0.8, acc=0.2, curr_vel=vel_z, debug=False)
             z_array = cached_var.get("points")
             mpc_point_arr = np.transpose(np.row_stack((x_array, y_array, z_array)))
 
@@ -461,13 +410,13 @@ def main():
             x_array = cached_var.get("points")
             velocity_y_des, cached_var, _ = MPC_solver(cart_y, aruco_y, limit_y, 0, n, t, True, variables = cached_var, vel_limit = 100, acc=1, curr_vel=vel_y)
             y_array = cached_var.get("points")
-            velocity_z_des, cached_var, _ = MPC_solver(cart_z, aruco_z, limit_z, 0, n, t, True, variables = cached_var, vel_limit = 100, acc=1, curr_vel=vel_z)
+            velocity_z_des, cached_var, _ = MPC_solver(cart_z, aruco_z, limit_z, 0, n, t, True, variables = cached_var, vel_limit = 100, acc=1.5, curr_vel=vel_z)
             z_array = cached_var.get("points")
             # print("Marker unseen\t",aruco_x, velocity_x_des)
 
             mpc_point_arr = np.transpose(np.row_stack((x_array, y_array, z_array)))
         
-        # print(velocity_x_des, vel_x, aruco_x)
+        print(velocity_z_des, vel_z, aruco_z)
         print("Aruco X:\t", aruco_x, "Aruco Y:\t", aruco_y)
         # velocity_x_des = clamp(velocity_x_des, 1.5)
         # velocity_y_des = clamp(velocity_y_des, 1.5)
@@ -483,8 +432,8 @@ def main():
         if(cart_z < 1):
             # set_landing(0, 0, None, None, 0)
 
-            # set_mode(0, 'AUTO.LAND')
-            set_mode(0, 'LAND')
+            set_mode(0, 'AUTO.LAND')
+            # set_mode(0, 'LAND')
 
             # print(time.time() - start_time)
             if(not armed):
