@@ -55,7 +55,7 @@ class ArucoSingleTracker():
                 ):
         
         #rospy.init_node('cam_capture')
-        rospy.Subscriber('/iris_demo_9002/c920/image_raw', Image, self.imageCb)
+        rospy.Subscriber('/iris_extended/c920/image_raw', Image, self.imageCb)
         
         self.bridge = CvBridge()
      
@@ -86,6 +86,10 @@ class ArucoSingleTracker():
         #-- Set the camera size as the one it was calibrated with
         # self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, camera_size[0])
         # self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_size[1])
+
+	self.result = cv2.VideoWriter('/home/acharya/filename.avi',  
+                         cv2.VideoWriter_fourcc(*'MJPG'), 
+                         15, (camera_size[0],camera_size[1]))
 
         #-- Font for the text in the image
         self.font = cv2.FONT_HERSHEY_PLAIN
@@ -225,6 +229,7 @@ class ArucoSingleTracker():
             if show_video:
                 #--- Display the frame
                 cv2.imshow('frame', frame)
+		self.result.write(frame)
 
                 #--- use 'q' to quit
                 key = cv2.waitKey(1) & 0xFF

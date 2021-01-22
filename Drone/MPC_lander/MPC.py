@@ -40,8 +40,8 @@ def MPC_solver(actual=0., desired=0., pos_limit=1000, origin=0, nsteps=10.,inter
 	timer = time.time()
 
 	if nsteps != prev_nsteps:
-		big_I = np.eye(2*nsteps)
-		# big_I = block_diag(np.eye(nsteps),np.eye(nsteps)*1)			
+		# big_I = np.eye(2*nsteps)
+		big_I = block_diag(np.eye(nsteps)*0.5,np.eye(nsteps)*1)			
 		big_0 = np.zeros(2*nsteps)
 	
 	#Get dynamic & terminal constraints
@@ -111,7 +111,7 @@ def MPC_solver(actual=0., desired=0., pos_limit=1000, origin=0, nsteps=10.,inter
 					break
 
 		else:
-			max_vel_limit[0] = curr_vel + 0.0001
+			max_vel_limit[0] = abs(curr_vel) + 0.0001
 
 	max_vel_limit = np.concatenate((max_vel_limit, max_vel_limit))
 	# max_vel_limit[0] = max_vel_limit[nsteps] = 0
@@ -179,7 +179,7 @@ def MPC_solver(actual=0., desired=0., pos_limit=1000, origin=0, nsteps=10.,inter
 
 if __name__ == "__main__":
 	np.set_printoptions(precision=None, threshold=None, edgeitems=None, linewidth=1000, suppress=None, nanstr=None, infstr=None, formatter=None)
-	u_in, update_var, _ = MPC_solver(actual=2, desired=0, pos_limit=100, origin=0, nsteps=10, ret_points=True, vel_limit = 1, interval = .1, acc = 1, curr_vel=-5)
+	u_in, update_var, _ = MPC_solver(actual=9.9, desired=0, pos_limit=100, origin=0, nsteps=10, ret_points=True, vel_limit = 0.5, interval = .1, acc = 0, curr_vel=-0.5)
 	# print(update_var.get("points"))
 	# MPC_solver(0, 3, 100, 0, 10, variables=update_var)
 	# MPC_solver(0, 3, 100, 0, 10, variables=update_var)
