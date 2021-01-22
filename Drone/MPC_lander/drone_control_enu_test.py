@@ -31,6 +31,9 @@ from MPC import MPC_solver
 global R
 global roll, pitch, yaw
 
+des_e                                   = 0
+des_n                                   = 0
+des_u                                   = 10
 hz                                      = 20.0
 n                                       = 15
 t                                       = 1/hz
@@ -63,7 +66,6 @@ cached_var                              = {}
 flag                                    = True
 max_acc                                 = 0
 detected_aruco                          = False
-aruco_e = aruco_n = aruco_u             = 0
 prev_vel                                = 0
 prev_time                               = rospy.Time()
 time_taken                              = 0
@@ -250,7 +252,7 @@ def armed_cb(data):
 
 
 def main():
-    global home_en_recorded, home_u_recorded, cart_e, cart_n, cart_u, desired_e, desired_n, desired_u, home_yaw, aruco_e, aruco_n, aruco_u, armed
+    global home_en_recorded, home_u_recorded, cart_e, cart_n, cart_u, desired_e, desired_n, desired_u, home_yaw, des_e, des_n, des_u, armed
     global home_e, home_u, home_n, limit_e, limit_n, limit_u, cont, n, t, start_time, cached_var, detected_aruco, time_taken
     xAnt = yAnt = 0
     acc = 0
@@ -348,11 +350,11 @@ def main():
 
         ################################ MPC ###################################
 
-        velocity_e_des, cached_var, diff = MPC_solver(cart_e, aruco_e, limit_e, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc = 0, curr_vel=vel_e)
+        velocity_e_des, cached_var, diff = MPC_solver(cart_e, des_e, limit_e, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc = 0, curr_vel=vel_e)
         e_array = cached_var.get("points")
-        velocity_n_des, cached_var, _ = MPC_solver(cart_n, aruco_n, limit_n, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc = 0, curr_vel=vel_n)
+        velocity_n_des, cached_var, _ = MPC_solver(cart_n, des_n, limit_n, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc = 0, curr_vel=vel_n)
         n_array = cached_var.get("points")
-        velocity_u_des, cached_var, _ = MPC_solver(cart_u, aruco_u, limit_u, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc = 0, curr_vel=vel_u)
+        velocity_u_des, cached_var, _ = MPC_solver(cart_u, des_u, limit_u, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc = 0, curr_vel=vel_u)
         u_array = cached_var.get("points")
         # print("Marker unseen\t",aruco_e, velocity_e_des)
 
@@ -360,9 +362,9 @@ def main():
         
         print("Generated vel:\t",velocity_e_des,"Current vel:\t", vel_e, "Aruco E:\t", aruco_e)
         # print("Aruco E:\t", aruco_e, "Aruco N:\t", aruco_n)
-        # velocity_e_des = clamp(velocity_e_des, 1.5)
-        # velocity_n_des = clamp(velocity_n_des, 1.5)
-        # velocity_u_des = clamp(velocity_u_des, 1.5)
+        velocity_e_des = clamp(velocity_e_des, 1)
+        velocity_n_des = clamp(velocity_n_des, 1)
+        velocity_u_des = clamp(velocity_u_des, 1)
 
         pub1.publish(twist_obj(velocity_e_des, velocity_n_des, velocity_u_des, 0.0, 0.0, 0.0))
         # pub1.publish(twist_obj(velocity_e_des, 0, 0, 0.0, 0.0, 0.0))
