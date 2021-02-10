@@ -48,7 +48,7 @@
         </velocity_decay>
         <inertial>
           <pose frame=''>0 0 0 0 -0 0</pose>
-          <mass>1.5</mass>
+          <mass>1</mass>
           <inertia>
             <ixx>0.008</ixx>
             <ixy>0</ixy>
@@ -996,7 +996,7 @@
         <control channel='0'>
           <type>VELOCITY</type>
           <offset>0</offset>
-          <p_gain>0.20</p_gain>
+          <p_gain>1</p_gain>
           <i_gain>0</i_gain>
           <d_gain>0</d_gain>
           <i_max>0</i_max>
@@ -1010,7 +1010,7 @@
         <control channel='1'>
           <type>VELOCITY</type>
           <offset>0</offset>
-          <p_gain>0.20</p_gain>
+          <p_gain>1</p_gain>
           <i_gain>0</i_gain>
           <d_gain>0</d_gain>
           <i_max>0</i_max>
@@ -1024,7 +1024,7 @@
         <control channel='2'>
           <type>VELOCITY</type>
           <offset>0</offset>
-          <p_gain>0.20</p_gain>
+          <p_gain>1</p_gain>
           <i_gain>0</i_gain>
           <d_gain>0</d_gain>
           <i_max>0</i_max>
@@ -1038,7 +1038,7 @@
         <control channel='3'>
           <type>VELOCITY</type>
           <offset>0</offset>
-          <p_gain>0.20</p_gain>
+          <p_gain>1</p_gain>
           <i_gain>0</i_gain>
           <d_gain>0</d_gain>
           <i_max>0</i_max>
@@ -1060,7 +1060,7 @@
         </velocity_decay>
         <inertial>
           <pose frame=''>0 0 0 0 -0 0</pose>
-          <mass>1.5</mass>
+          <mass>1</mass>
           <inertia>
             <ixx>0.008</ixx>
             <ixy>0</ixy>

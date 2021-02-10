@@ -2,17 +2,17 @@
 
 from __future__ import print_function
 from os import sys, path
-import select, termios, tty, rospy, argparse, mavros, threading, time, readline, signal, select, tf, quadprog, math, tf2_ros, tf2_geometry_msgs, csv
+import rospy, argparse, mavros, threading, time, signal, tf, quadprog, math, tf2_ros, tf2_geometry_msgs, csv, npyscreen
 
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
-from land_using_single_aruco import Land
 from opencv.lib_aruco_pose import ArucoSingleTracker
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Header, Float32, Float64, Empty
 from geometry_msgs.msg import PoseStamped, TwistStamped, Vector3, Quaternion, Point, Twist, PointStamped
 from rosgraph_msgs.msg import Clock
 
+from datetime import datetime
 from mavros import command
 from mavros_msgs.msg import PositionTarget, Altitude, State
 from mavros_msgs.srv import CommandBool, CommandTOL, SetMode
@@ -31,10 +31,10 @@ from MPC import MPC_solver
 global R
 global roll, pitch, yaw
 
-des_e                                   = 0
-des_n                                   = 0
-des_u                                   = 10
-hz                                      = 20.0
+desired_e                               = 0
+desired_n                               = 0
+desired_u                               = 6
+hz                                      = 10.0
 n                                       = 15
 t                                       = 1/hz
 print(t, hz)
@@ -73,7 +73,9 @@ start_clock                             = False
 contact_made                            = False
 init_pose                               = False
 gu_e = gu_n = gu_u = e_0 = n_0          = 0
-
+hold_timer                              = 0.
+file_str                                = ''
+is_writing                              = False
 
 id_to_find          = 72
 marker_size         = 50
@@ -84,7 +86,7 @@ camera_matrix       = np.loadtxt(calib_path+'cameraMatrix.txt', delimiter=',')
 
 if not path.isfile('test_land_algo_params_2n_n.csv'):
     csvfile = open('test_land_algo_params_2n_n.csv','w')
-    fieldnames = ['aruco_e','aruco_n','init_e','init_n','init_r','e_err','n_err','r_err','time_elapsed','contact_force']
+    fieldnames = ['time','drone_x','drone_y','drone_z','vel_x','vel_y','vel_z','comm_vel_x','comm_vel_y','comm_vel_z']
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
     writer.writeheader()
     csvfile.close()
@@ -92,6 +94,81 @@ if not path.isfile('test_land_algo_params_2n_n.csv'):
 # csvfile = open('test_land_algo_params_2n_n.csv','a')
 
 # writer = csv.writer(csvfile)
+class form_object(npyscreen.Form):
+    def create(self):
+        global speed_slider, nsteps_slider, rate_slider, debug, debug2, e_textbox, n_textbox, u_textbox, remarks_textbox
+        main_thread.start()
+
+        nsteps_slider = self.add(npyscreen.TitleSlider, name = "No. of steps:", value = 15, out_of = 50)
+        rate_slider = self.add(npyscreen.TitleSlider, name = "Rate:", value = 10, out_of = 15, step = 1)
+        speed_slider = self.add(npyscreen.TitleSlider, name = "Speed:", value = 0.5, out_of = 3, step = 0.1)
+        self.add(npyscreen.TitleFixedText, name = "Enter Position:")
+        # self.add(npyscreen.Textfield, )
+        e_textbox = self.add(npyscreen.TitleText, name = "Desired E:", value = "5")
+        n_textbox = self.add(npyscreen.TitleText, name = "Desired N:", value = "0")
+        u_textbox = self.add(npyscreen.TitleText, name = "Desired Altitude:", value = "6")
+
+        remarks_textbox = self.add(npyscreen.TitleText, name = "Add remarks for data:")
+
+        debug = self.add(npyscreen.TitleText, name="Average time:")
+        debug2 = self.add(npyscreen.TitleText, name="Instantaneous time:")
+
+        run_button = self.add(button_object, name = "Run MPC")
+
+    def afterEditing(self):
+        global main_thread
+        self.parentApp.setNextForm(None)
+        main_thread.do_run = False
+        main_thread.join()
+
+    def adjust_widgets(self):
+        global e_textbox, n_textbox, u_textbox, desired_e, desired_n, desired_u, debug, debug2
+
+        if(e_textbox.value != None and n_textbox.value != None and u_textbox.value != None): 
+            desired_e = float(e_textbox.value)
+            desired_n = float(n_textbox.value)
+            desired_u = float(u_textbox.value)
+
+        debug.value = str(hold_timer)
+        debug2.value = str(desired_n)
+
+        debug.display()
+        debug2.display()
+
+class App(npyscreen.NPSAppManaged):
+    def onStart(self):
+        self.addForm('MAIN', form_object, name = "RBCCPS MPC CONTROLLER")
+
+class button_object(npyscreen.Button):
+    def whenToggled(self):
+        global csvfile, is_writing, writer
+        print("Running!")
+
+        if(is_writing == False):
+
+            file_str = remarks_textbox.value + '_' + str(datetime.now().month) + '_' + str(datetime.now().day) + '_' + str(datetime.now().hour) + '_' + str(datetime.now().minute) + '.csv'
+            csvfile = open(file_str,'w')
+            fieldnames = ['Time','cart_e','cart_n','cart_u','vel_e','vel_n','vel_u','desired_e','desired_n','desired_u']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)#, extrasaction='ignore')
+            writer.writeheader()
+            csvfile.close()
+
+            is_writing = True
+
+        csvfile = open(file_str,'a')
+        writer = csv.writer(csvfile)
+
+        run_thread = threading.Thread(target = run_control, args=())
+        run_thread.start()
+
+        # if(run_thread.isAlive()):
+        #     value = True
+
+        # else:
+        self.value = False
+
+        # run_thread.run()
+        # run_control()
 
 
 def clamp(num, value):
@@ -109,38 +186,6 @@ def get_pos_cb(data):
         e_0 = gu_e
         n_0 = gu_n
         init_pose = True
-
-
-def contact_cb(data):
-    global contact_made, start_time
-
-    contact = data.states
-    current_time = data.header.stamp
-
-    # print("NO CONTACT")
-    if contact.__len__()!=0 and not contact_made:
-        print("CONTACT!!!!!!!!!!!!!!!!")
-        contact_made = True
-        contact_force = contact[0].total_wrench.force.z
-        r_0 = sqrt(pow(e_0,2)+pow(n_0,2))
-        e_err = gu_e
-        n_err = gu_n
-        r_err = sqrt(pow(e_err,2)+pow(n_err,2))
-        print(current_time, start_time)
-        t = (current_time-start_time).to_sec()
-        f = contact[0].total_wrench.force.z
-        writer.writerow([int(aruco_e), int(aruco_n), int(e_0*100), int(n_0*100), int(r_0*100), int(e_err*100), int(n_err*100), int(r_err*100), t, int(f)])
-        csvfile.close() 
-
-
-def clock_cb(data):
-    global start_clock, land_clock, current_time
-    
-    current_time = data.clock.secs
-    
-    # if not start_clock:
-    #     start_time = current_time
-    #     start_clock = True
 
 
 def imu_cb(data):
@@ -172,10 +217,31 @@ def gps_local_cb(data):
         discard_samples = discard_samples - 1
 
         if(discard_samples <= 0):
-            desired_e = cart_e                          #to set home position as initial desired position
-            desired_n = cart_n
+            # desired_e = cart_e                          #to set home position as initial desired position
+            # desired_n = cart_n
             start_n = home_n
             home_en_recorded = True
+
+
+def contact_cb(data):
+    global contact_made, start_time
+
+    contact = data.states
+    current_time = data.header.stamp
+
+    # print("NO CONTACT")
+    if contact.__len__()!=0 and not contact_made:
+        contact_made = True
+        contact_force = contact[0].total_wrench.force.z
+        r_0 = sqrt(pow(x_0,2)+pow(y_0,2))
+        x_err = gz_x
+        y_err = gz_y
+        r_err = sqrt(pow(x_err,2)+pow(y_err,2))
+        # print(current_time, start_time)
+        t = (current_time-start_time).to_sec()
+        f = contact[0].total_wrench.force.z
+        writer.writerow([int(aruco_x), int(aruco_y), int(x_0*100), int(y_0*100), int(r_0*100), int(x_err*100), int(y_err*100), int(r_err*100), t, int(f)])
+        csvfile.close() 
 
 
 def pose_cb(data):
@@ -188,7 +254,7 @@ def pose_cb(data):
 
 
 def velocity_cb(data):
-    global vel_e, vel_n, vel_u, prev_time, prev_vel, max_acc
+    global vel_e, vel_n, vel_u, prev_time, delta_time, prev_vel, max_acc
 
     vel_e = data.twist.linear.x
     vel_n = data.twist.linear.y
@@ -227,23 +293,28 @@ def calc_target_cb(data):
 
 
 def twist_obj(x, y, z, a, b, c):
-    # movx_cmd = Twist()
-    movx_cmd = TwistStamped(header=Header(stamp=rospy.get_rostime()))
-    movx_cmd.twist.linear.x = x
-    movx_cmd.twist.linear.y = y
-    movx_cmd.twist.linear.z = z
-    movx_cmd.twist.angular.x = a
-    movx_cmd.twist.angular.y = b
-    movx_cmd.twist.angular.z = c
-    return movx_cmd
+    # move_cmd = Twist()
+    move_cmd = TwistStamped(header=Header(stamp=rospy.get_rostime()))
+    move_cmd.twist.linear.x = x
+    move_cmd.twist.linear.y = y
+    move_cmd.twist.linear.z = z
+    move_cmd.twist.angular.x = a
+    move_cmd.twist.angular.y = b
+    move_cmd.twist.angular.z = c
+    return move_cmd
 
 
-def gazebo_cb(data):
-    global br
-    global cont,rate, pos, quat 
-
-    pos = data.pose[1].position
-    quat = data.pose[1].orientation
+def pose_obj(x, y, z, a, b, c, d):
+    # move_cmd = Twist()
+    pose_cmd = PoseStamped(header=Header(stamp=rospy.get_rostime()))
+    pose_cmd.pose.position.x = x
+    pose_cmd.pose.position.y = y
+    pose_cmd.pose.position.z = z
+    pose_cmd.pose.orientation.x = a
+    pose_cmd.pose.orientation.y = b
+    pose_cmd.pose.orientation.z = c
+    pose_cmd.pose.orientation.w = d
+    return pose_cmd
 
 
 def armed_cb(data):
@@ -252,14 +323,7 @@ def armed_cb(data):
 
 
 def main():
-    global home_en_recorded, home_u_recorded, cart_e, cart_n, cart_u, desired_e, desired_n, desired_u, home_yaw, des_e, des_n, des_u, armed
-    global home_e, home_u, home_n, limit_e, limit_n, limit_u, cont, n, t, start_time, cached_var, detected_aruco, time_taken
-    xAnt = yAnt = 0
-    acc = 0
-    max_acc = 0
-    home_en_recorded = False
-    rospy.init_node('MAVROS_Listener')
-    
+    global pub, pub1, pub2, pub3, pub4, pub5, pub6, pub7, rate, set_arming, set_mode    
     rate = rospy.Rate(hz)
 
     tf_buff = tf2_ros.Buffer()
@@ -270,41 +334,58 @@ def main():
     rospy.Subscriber("/mavros/global_position/local", Odometry, gps_local_cb)
     rospy.Subscriber("/mavros/local_position/pose", PoseStamped, pose_cb)
     rospy.Subscriber("/move_base_simple/goal", PoseStamped, calc_target_cb)
-    rospy.Subscriber("/gazebo/model_states", ModelStates, get_pos_cb)
     rospy.Subscriber("/mavros/local_position/velocity_local", TwistStamped, velocity_cb)
     rospy.Subscriber("/mavros/state", State, armed_cb)
 
-    #time subscriber
-    rospy.Subscriber('clock', Clock, clock_cb)
-
     pub = rospy.Publisher('destination_point', PointStamped, queue_size = 1)
+    pub1 = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel', TwistStamped, queue_size = 1)
     pub2 = rospy.Publisher('gps_point', PointStamped, queue_size = 5)
-    pub3 = rospy.Publisher('boundarn_cube', Marker, queue_size = 1)
     pub4 = rospy.Publisher('path', Path, queue_size=1)
     pub5 = rospy.Publisher('ekf_path', Path, queue_size=1)
     pub6 = rospy.Publisher('mpc_path', Path, queue_size=1)
+    pub7 = rospy.Publisher('/mavros/setpoint_position/local', PoseStamped, queue_size=1)
 
     set_arming = rospy.ServiceProxy('/mavros/cmd/arming', CommandBool)
     set_mode = rospy.ServiceProxy('/mavros/set_mode', SetMode)
     set_takeoff = rospy.ServiceProxy('/mavros/cmd/takeoff', CommandTOL)
     set_landing = rospy.ServiceProxy('/mavros/cmd/land', CommandTOL)
 
+    mavros.command.arming(True)
+    time.sleep(0.2)
+    if(cart_u < 1):
+        set_mode(0, 'GUIDED')
+
+        time.sleep(0.5)
+        set_takeoff(0, 0, None, None, 10)
+        # set_mode(0, 'AUTO.TAKEOFF')
+
+    while cart_u < 3.5 and not rospy.is_shutdown() and getattr(main_thread, "do_run", True): continue
+
+    # main_thread = threading.currentThread()
+    # main_thread.join()
+    # run_control()
+
+
+def run_control():
+    global home_u_recorded, desired_e, desired_n, desired_u, home_yaw, armed, hold_timer, nsteps_slider, speed_slider, is_writing
+    global cont, n, t, start_time, detected_aruco, time_taken, cached_var, main_thread, delta_time, rate_slider, writer
+    xAnt = yAnt = 0
+    acc = 0
+    max_acc = 0
+    hold_timer = 0.
+
     path = Path()
     ekf_path = Path()
     mpc_path = Path()
     max_append = 1000
 
-    mavros.command.arming(True)
-    if(cart_u < 1):
-        set_mode(0, 'GUIDED')
+    vel = float(speed_slider.value)
+    n = int(nsteps_slider.value)
+    t = 1/float(rate_slider.value)
 
-        set_takeoff(0, 0, None, None, 10)
-        # set_mode(0, 'AUTO.TAKEOFF')
+    data_timer = 0.
 
-    while cart_u < 9.5 and not rospy.is_shutdown(): continue
-
-    while not rospy.is_shutdown():
-    	# yaw = 360.0 + yaw if yaw < 0 else yaw
+    while not rospy.is_shutdown() and getattr(main_thread, "do_run", True):
 
         if home_u_recorded is False and cart_u != 0 and yaw != 0:
             # desired_u = cart_u + 3
@@ -312,72 +393,47 @@ def main():
             home_u = cart_u
             home_u_recorded = True
 
-        # ready = select.select([sys.stdin], [], [], 0)[0]
-
-        # if ready:
-        #     x = ready[0].read(1)
-
-        #     if x == 'x':
-        #         limit_e = float(raw_input('Enter x limit:'))
-
-        #     if x == 'y':
-        #         limit_n = float(raw_input('Enter y limit:'))
-
-        #     if x == 'z':
-        #         limit_u = float(raw_input('Enter z limit:'))
-
-        #     if x == 'p':
-        #         kp = float(raw_input('Enter kp limit:'))
-
-        #     if x == 'b':
-        #         kb = float(raw_input('Enter kb limit:'))
-
-        #     if x == 's':
-        #         gps_rate = int(raw_input('0 - original, 1 - slow:'))
-
-        #     if x == 'n':
-        #         n = int(raw_input("Enter nsteps:"))
-
-        #     if x == 't':
-        #         t = float(raw_input("Enter timestep duration:"))
-
-        #     sys.stdin.flush()
-
-        # +90 To account for diff between world and drone frame
-        # desired_yaw = (math.atan2(desired_n - cart_n, desired_e - cart_e) * 180 / 3.1416)
-        # desired_yaw = 360.0 + desired_yaw if desired_yaw < 0 else desired_yaw
-
-
         ################################ MPC ###################################
 
-        velocity_e_des, cached_var, diff = MPC_solver(cart_e, des_e, limit_e, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc = 0, curr_vel=vel_e)
+        velocity_e_des, cached_var, diff = MPC_solver(cart_e, desired_e, limit_e, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc = 0, curr_vel=vel_e)
         e_array = cached_var.get("points")
-        velocity_n_des, cached_var, _ = MPC_solver(cart_n, des_n, limit_n, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc = 0, curr_vel=vel_n)
+        velocity_n_des, cached_var, _ = MPC_solver(cart_n, desired_n, limit_n, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc = 0, curr_vel=vel_n)
         n_array = cached_var.get("points")
-        velocity_u_des, cached_var, _ = MPC_solver(cart_u, des_u, limit_u, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc = 0, curr_vel=vel_u)
+        velocity_u_des, cached_var, _ = MPC_solver(cart_u, desired_u, limit_u, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc = 1, curr_vel=vel_u)
         u_array = cached_var.get("points")
         # print("Marker unseen\t",aruco_e, velocity_e_des)
 
         mpc_point_arr = np.transpose(np.row_stack((e_array, n_array, u_array)))
         
-        print("Generated vel:\t",velocity_e_des,"Current vel:\t", vel_e, "Aruco E:\t", aruco_e)
+        # print("Generated vel:",velocity_u_des,"\tCurrent vel:", vel_u, "\tCurrent pos:", cart_u)
         # print("Aruco E:\t", aruco_e, "Aruco N:\t", aruco_n)
-        velocity_e_des = clamp(velocity_e_des, 1)
-        velocity_n_des = clamp(velocity_n_des, 1)
-        velocity_u_des = clamp(velocity_u_des, 1)
+        # velocity_e_des = clamp(velocity_e_des, 1)
+        # velocity_n_des = clamp(velocity_n_des, 1)
+        # velocity_u_des = clamp(velocity_u_des, 1)
 
         pub1.publish(twist_obj(velocity_e_des, velocity_n_des, velocity_u_des, 0.0, 0.0, 0.0))
         # pub1.publish(twist_obj(velocity_e_des, 0, 0, 0.0, 0.0, 0.0))
 
-        if(cart_u < 1):
-            # set_landing(0, 0, None, None, 0)
+        dist = sqrt((cart_e - desired_e)**2+(cart_n - desired_n)**2+(cart_u - desired_u)**2)
 
-            # set_mode(0, 'AUTO.LAND')
-            set_mode(0, 'LAND')
+        if(dist < 1):
+            hold_timer = hold_timer + delta_time
 
-            # print(time.time() - start_time)
-            if(not armed):
+            if(hold_timer > 5):
+                # set_mode(0, 'GUIDED')
+                csvfile.close()
+
+                is_writing = False
+                pub7.publish(pose_obj(0, 0, 10, 0, 0, 0, 0))
                 sys.exit()
+            # print(time.time() - start_time)
+            # if(not armed):
+
+        data_timer = data_timer + delta_time
+
+        if(data_timer > 0.1):
+            writer.writerow([rospy.get_time(), float(cart_e), float(cart_n), float(cart_u), float(vel_e), float(vel_n), float(vel_u), float(velocity_e_des), float(velocity_n_des), float(velocity_u_des)])
+            # csvfile.close()
 
         if(detected_aruco):
             desired_point = PointStamped(header=Header(stamp=rospy.get_rostime()))
@@ -418,7 +474,6 @@ def main():
                 mpc_pose.pose.position.z = mpc_point_arr[i][2]# + desired_u - home_u
                 mpc_pose_array[i] = mpc_pose
 
-            # if (xAnt != pose.pose.position.x and yAnt != pose.pose.position.y):
             pose.header.seq = path.header.seq + 1
             path.header.frame_id = "map"
             path.header.stamp = rospy.Time.now()
@@ -449,12 +504,14 @@ def main():
 
         rate.sleep()
 
-        # br2.sendTransform((0, 0, 0), (0, 0, 0, 1), rospy.Time.now(), "fcu", "map")
-
         
 if __name__ == "__main__":
+    global main_thread
     mavros.set_namespace("/mavros")
-    pub1 = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel', TwistStamped, queue_size = 1)
-    path = Path() 
-    np.set_printoptions(precision=None, threshold=None, edgeitems=None, linewidth=1000, suppress=None, nanstr=None, infstr=None, formatter=None)
-    main()
+    rospy.init_node('MAVROS_Listener')
+
+    # main()
+    main_thread = threading.Thread(target = main)
+    # main_thread.start()
+    # main_thread.run()
+    app = App().run()
