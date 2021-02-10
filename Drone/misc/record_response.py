@@ -32,13 +32,13 @@ def gazebo_cb(msg):
 	# gazebo_x_vel = -msg.twist[0].linear.y
 
 	#PX4
-	gazebo_x_vel = msg.twist[2].linear.z
+	gazebo_x_vel = msg.twist[2].linear.x
 
 
 def mavros_vel_cb(msg):
 	global mavros_e_vel
 
-	mavros_e_vel = msg.twist.linear.z
+	mavros_e_vel = msg.twist.linear.z 
 
 
 def comm_vel_cb(msg):
@@ -54,37 +54,37 @@ rate = rospy.Rate(10)
 rospy.Subscriber('/mavros/local_position/velocity_local', TwistStamped, mavros_vel_cb)
 rospy.Subscriber('/mavros/setpoint_velocity/cmd_vel', TwistStamped, comm_vel_cb)
 
-pub = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel', TwistStamped, queue_size=1)
+# pub = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel', TwistStamped, queue_size=1)
 
-# while commanded_e_vel == -1.5: print("Wait")
+#while commanded_e_vel == -1.5: print("Wait")
 
-while(not rospy.is_shutdown() and time_elapsed < 10.0):
+while(not rospy.is_shutdown() and time_elapsed < 20.0):
 # while(not rospy.is_shutdown()):
 	time_elapsed = time.time() - start_timer
 
 	if(time_elapsed < 1.0):
-		pub.publish(twist_obj(0, 0, 0, 0, 0, 0))
+		# pub.publish(twist_obj(0, 0, 0, 0, 0, 0))
 
-		plot_arrays[0].append(0)
-		# plot_arrays[0].append(commanded_e_vel)
+		# plot_arrays[0].append(0)
+		plot_arrays[0].append(commanded_e_vel)
 #		plot_arrays[1].append(gazebo_x_vel)
 		plot_arrays[2].append(mavros_e_vel)
 		plot_arrays[3].append(time_elapsed)
 
 	elif(time_elapsed >= 1.0 and time_elapsed <= 7.0):
-		pub.publish(twist_obj(0, 0, -1, 0, 0, 0))
+		# pub.publish(twist_obj(1, 0, 0, 0, 0, 0))
 
-		plot_arrays[0].append(-1)
-		# plot_arrays[0].append(commanded_e_vel)
+		# plot_arrays[0].append(1)
+		plot_arrays[0].append(commanded_e_vel)
 #		plot_arrays[1].append(gazebo_x_vel)
 		plot_arrays[2].append(mavros_e_vel)
 		plot_arrays[3].append(time_elapsed)
 
 	else:
-		pub.publish(twist_obj(0, 0, 0, 0, 0, 0))
+		# pub.publish(twist_obj(0, 0, 0, 0, 0, 0))
 
-		plot_arrays[0].append(0)
-		# plot_arrays[0].append(commanded_e_vel)
+		# plot_arrays[0].append(0)
+		plot_arrays[0].append(commanded_e_vel)
 #		plot_arrays[1].append(gazebo_x_vel)
 		plot_arrays[2].append(mavros_e_vel)
 		plot_arrays[3].append(time_elapsed)
@@ -95,8 +95,7 @@ while(not rospy.is_shutdown() and time_elapsed < 10.0):
 plt.plot(plot_arrays[3], plot_arrays[0], plot_arrays[3], plot_arrays[2])  #ot_arrays[1])
 plt.xlabel('Time in s')
 plt.ylabel('Velocity in m/s')
-plt.ylim(-1.5,1)
-
+plt.ylim(-1,1)
 # plt.legend()
 # plt.plot(plot_arrays[3], plot_arrays[0])
 print(len(plot_arrays[0]), len(plot_arrays[1]), len(plot_arrays[2]), len(plot_arrays[3]))

@@ -6,7 +6,6 @@ import rospy, argparse, mavros, threading, time, signal, tf, quadprog, math, tf2
 
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
-from opencv.lib_aruco_pose import ArucoSingleTracker
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Header, Float32, Float64, Empty
 from geometry_msgs.msg import PoseStamped, TwistStamped, Vector3, Quaternion, Point, Twist, PointStamped
@@ -20,8 +19,6 @@ from mavros_msgs.srv import CommandBool, CommandTOL, SetMode
 from nav_msgs.msg import Path, Odometry
 from visualization_msgs.msg import Marker
 from math import pow, sqrt
-
-from gazebo_msgs.msg import ModelStates, ContactsState
 
 from sensor_msgs.msg import Imu, NavSatFix
 from tf.transformations import euler_from_quaternion
@@ -84,12 +81,13 @@ calib_path          = cwd+"/../opencv/"
 camera_distortion   = np.loadtxt(calib_path+'cameraDistortion.txt', delimiter=',')                                      
 camera_matrix       = np.loadtxt(calib_path+'cameraMatrix.txt', delimiter=',')
 
-if not path.isfile('test_land_algo_params_2n_n.csv'):
-    csvfile = open('test_land_algo_params_2n_n.csv','w')
-    fieldnames = ['time','drone_x','drone_y','drone_z','vel_x','vel_y','vel_z','comm_vel_x','comm_vel_y','comm_vel_z']
-    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-    writer.writeheader()
-    csvfile.close()
+# if not path.isfile('test_land_algo_params_2n_n.csv'):
+#     csvfile = open('test_land_algo_params_2n_n.csv','w')
+#     fieldnames = ['aruco_e','aruco_n','init_e','init_n','init_r','e_err','n_err','r_err','time_elapsed','contact_force']
+#     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+#     writer.writeheader()
+#     csvfile.close()
+
 
 # csvfile = open('test_land_algo_params_2n_n.csv','a')
 
@@ -201,7 +199,7 @@ def imu_cb(data):
 
     if(abs(acc) > max_acc):
         max_acc = abs(acc)
-        # print("Measured max:\t",acc)
+        print("Measured max:\t",acc)
 
 
 def gps_local_cb(data):
@@ -351,10 +349,12 @@ def main():
     set_landing = rospy.ServiceProxy('/mavros/cmd/land', CommandTOL)
 
     mavros.command.arming(True)
-    time.sleep(0.2)
-    if(cart_u < 1):
-        set_mode(0, 'GUIDED')
 
+    time.sleep(0.2)
+
+    set_mode(0, 'GUIDED')
+
+    if(cart_u < 1):
         time.sleep(0.5)
         set_takeoff(0, 0, None, None, 10)
         # set_mode(0, 'AUTO.TAKEOFF')
@@ -395,21 +395,22 @@ def run_control():
 
         ################################ MPC ###################################
 
-        velocity_e_des, cached_var, diff = MPC_solver(cart_e, desired_e, limit_e, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc = 0, curr_vel=vel_e)
+        velocity_e_des, cached_var, diff = MPC_solver(cart_e, des_e, limit_e, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc = 0.5, curr_vel=vel_e)
         e_array = cached_var.get("points")
-        velocity_n_des, cached_var, _ = MPC_solver(cart_n, desired_n, limit_n, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc = 0, curr_vel=vel_n)
+        velocity_n_des, cached_var, _ = MPC_solver(cart_n, des_n, limit_n, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc = 0.5, curr_vel=vel_n)
         n_array = cached_var.get("points")
-        velocity_u_des, cached_var, _ = MPC_solver(cart_u, desired_u, limit_u, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc = 1, curr_vel=vel_u)
+        velocity_u_des, cached_var, _ = MPC_solver(cart_u, des_u, limit_u, 0, n, t, True, variables = cached_var, vel_limit = 0.3, acc = 0, curr_vel=vel_u)
         u_array = cached_var.get("points")
-        # print("Marker unseen\t",aruco_e, velocity_e_des)
 
         mpc_point_arr = np.transpose(np.row_stack((e_array, n_array, u_array)))
         
-        # print("Generated vel:",velocity_u_des,"\tCurrent vel:", vel_u, "\tCurrent pos:", cart_u)
-        # print("Aruco E:\t", aruco_e, "Aruco N:\t", aruco_n)
-        # velocity_e_des = clamp(velocity_e_des, 1)
-        # velocity_n_des = clamp(velocity_n_des, 1)
-        # velocity_u_des = clamp(velocity_u_des, 1)
+
+        # print("Generated vel:\t",velocity_e_des,"Current vel:\t", vel_e, "Aruco E:\t", aruco_e)
+        print("Current E:\t", cart_e, "Current N:\t", cart_n, "Current U:\t", cart_u)
+        print("Generated Z velocity:\t", velocity_u_des, "Current Z velocity:\t", vel_u)
+        velocity_e_des = clamp(velocity_e_des, 0.5)
+        velocity_n_des = clamp(velocity_n_des, 0.5)
+        velocity_u_des = clamp(velocity_u_des, 0.5)
 
         pub1.publish(twist_obj(velocity_e_des, velocity_n_des, velocity_u_des, 0.0, 0.0, 0.0))
         # pub1.publish(twist_obj(velocity_e_des, 0, 0, 0.0, 0.0, 0.0))
