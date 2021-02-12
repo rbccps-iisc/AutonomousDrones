@@ -43,6 +43,7 @@ from cv_bridge.boost.cv_bridge_boost import getCvType
 import cv2.aruco as aruco
 from sensor_msgs.msg import Image
 import sys, time, math
+from datetime import datetime
 
 class ArucoSingleTracker():
     def __init__(self,
@@ -65,6 +66,8 @@ class ArucoSingleTracker():
         self.marker_size    = marker_size
         self._show_video    = show_video
         
+        self.camera_size = camera_size
+        
         self._camera_matrix = camera_matrix
         self._camera_distortion = camera_distortion
         
@@ -82,14 +85,10 @@ class ArucoSingleTracker():
         self._parameters  = aruco.DetectorParameters_create()
 
         #--- Capture the videocamera (this may also be a video or a picture)
-        # self._cap = cv2.VideoCapture(1)
+        self._cap = cv2.VideoCapture(0)
         #-- Set the camera size as the one it was calibrated with
-        # self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, camera_size[0])
-        # self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_size[1])
-
-	self.result = cv2.VideoWriter('/home/acharya/filename.avi',  
-                         cv2.VideoWriter_fourcc(*'MJPG'), 
-                         15, (camera_size[0],camera_size[1]))
+        self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, camera_size[0])
+        self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_size[1])
 
         #-- Font for the text in the image
         self.font = cv2.FONT_HERSHEY_PLAIN
@@ -151,11 +150,14 @@ class ArucoSingleTracker():
         x = y = z = 0
         #rate = rospy.Rate(30)
 
+        file_str = str(datetime.now().year) + '_' + str(datetime.now().month) + '_' + str(datetime.now().day) + '_' + str(datetime.now().hour) + '_' + str(datetime.now().minute) + '.avi'
+        out = cv2.VideoWriter(file_str,cv2.VideoWriter_fourcc('X','V','I','D'), 10, (self.camera_size[0],self.camera_size[1]))
+
         while not self._kill and not rospy.is_shutdown():
             
             #-- Read the camera frame
             frame = self.frame
-            # ret, frame = self._cap.read()
+            ret_vid , frame = self._cap.read()
 
             self._update_fps_read()
             
@@ -228,26 +230,38 @@ class ArucoSingleTracker():
 
             if show_video:
                 #--- Display the frame
-                cv2.imshow('frame', frame)
-		self.result.write(frame)
+                dim = (160,120)
+                frame_new = cv2.resize(frame, dim, interpolation =cv2.INTER_AREA)
+                #cv2.imwrite(file,)
+                cv2.imshow('frame', frame_new)
 
-                #--- use 'q' to quit
-                key = cv2.waitKey(1) & 0xFF
-                if key == ord('q'):
-                    self._cap.release()
-                    cv2.destroyAllWindows()
-                    break
+                if ret_vid ==True:
+                    #frame = cv2.flip(frame,0)
+                    out.write(frame)
+
+                    #--- use 'q' to quit
+                    key = cv2.waitKey(1) & 0xFF
+                    if key == ord('q'):
+                        self._cap.release()
+                        cv2.destroyAllWindows()
+
+                #self._cap.release()
+                #out.release()
+                #cv2.destroyAllWindows()
+
+
+
             
             if not loop: return(marker_found, x, y, z, corners)
             
 if __name__ == "__main__":
 
     #--- Define Tag
-    id_to_find  = 70
-    marker_size  = 50 #- [cm]
+    id_to_find  = 72
+    marker_size  = 20 #- [cm]
 
     #--- Get the camera calibration path
-    calib_path  = "/home/varun/RBCCPS-Teledrones/Drone/opencv/"
+    calib_path  = ""
     camera_matrix   = np.loadtxt(calib_path+'cameraMatrix.txt', delimiter=',')
     camera_distortion   = np.loadtxt(calib_path+'cameraDistortion.txt', delimiter=',')                                      
     aruco_tracker = ArucoSingleTracker(id_to_find=id_to_find, marker_size=marker_size, show_video=True, camera_matrix=camera_matrix, camera_distortion=camera_distortion)

@@ -94,12 +94,13 @@ camera_matrix       = np.loadtxt(calib_path+'cameraMatrix.txt', delimiter=',')
 # writer = csv.writer(csvfile)
 class form_object(npyscreen.Form):
     def create(self):
-        global speed_slider, nsteps_slider, rate_slider, debug, debug2, e_textbox, n_textbox, u_textbox, remarks_textbox
+        global speed_slider, nsteps_slider, rate_slider, debug, debug2, e_textbox, n_textbox, u_textbox, remarks_textbox, acc_slider
         main_thread.start()
 
         nsteps_slider = self.add(npyscreen.TitleSlider, name = "No. of steps:", value = 15, out_of = 50)
         rate_slider = self.add(npyscreen.TitleSlider, name = "Rate:", value = 10, out_of = 15, step = 1)
-        speed_slider = self.add(npyscreen.TitleSlider, name = "Speed:", value = 0.5, out_of = 3, step = 0.1)
+        speed_slider = self.add(npyscreen.TitleSlider, name = "Speed:", value = 0.8, out_of = 3, step = 0.1)
+        acc_slider = self.add(npyscreen.TitleSlider, name = "Acceleration XY:", value = 1.8, out_of = 2, step = 0.1)
         self.add(npyscreen.TitleFixedText, name = "Enter Position:")
         # self.add(npyscreen.Textfield, )
         e_textbox = self.add(npyscreen.TitleText, name = "Desired E:", value = "5")
@@ -356,10 +357,10 @@ def main():
 
     if(cart_u < 1):
         time.sleep(0.5)
-        set_takeoff(0, 0, None, None, 10)
+        set_takeoff(0, 0, None, None, 6)
         # set_mode(0, 'AUTO.TAKEOFF')
 
-    while cart_u < 3.5 and not rospy.is_shutdown() and getattr(main_thread, "do_run", True): continue
+    while cart_u < 2 and not rospy.is_shutdown() and getattr(main_thread, "do_run", True): continue
 
     # main_thread = threading.currentThread()
     # main_thread.join()
@@ -367,12 +368,14 @@ def main():
 
 
 def run_control():
-    global home_u_recorded, desired_e, desired_n, desired_u, home_yaw, armed, hold_timer, nsteps_slider, speed_slider, is_writing
-    global cont, n, t, start_time, detected_aruco, time_taken, cached_var, main_thread, delta_time, rate_slider, writer
+    global home_u_recorded, desired_e, desired_n, desired_u, home_yaw, armed, hold_timer, nsteps_slider, speed_slider, acc_slider
+    global cont, n, t, start_time, detected_aruco, time_taken, cached_var, main_thread, delta_time, rate_slider, writer, is_writing
     xAnt = yAnt = 0
     acc = 0
-    max_acc = 0
+    max_acc = acc_slider.value
     hold_timer = 0.
+
+
 
     path = Path()
     ekf_path = Path()
@@ -395,22 +398,22 @@ def run_control():
 
         ################################ MPC ###################################
 
-        velocity_e_des, cached_var, diff = MPC_solver(cart_e, des_e, limit_e, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc = 0.5, curr_vel=vel_e)
+        velocity_e_des, cached_var, diff = MPC_solver(cart_e, desired_e, limit_e, 0, n, t, True, variables = cached_var, vel_limit = vel, acc = max_acc, curr_vel=vel_e)
         e_array = cached_var.get("points")
-        velocity_n_des, cached_var, _ = MPC_solver(cart_n, des_n, limit_n, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc = 0.5, curr_vel=vel_n)
+        velocity_n_des, cached_var, _ = MPC_solver(cart_n, desired_n, limit_n, 0, n, t, True, variables = cached_var, vel_limit = vel, acc = max_acc, curr_vel=vel_n)
         n_array = cached_var.get("points")
-        velocity_u_des, cached_var, _ = MPC_solver(cart_u, des_u, limit_u, 0, n, t, True, variables = cached_var, vel_limit = 0.3, acc = 0, curr_vel=vel_u)
+        velocity_u_des, cached_var, _ = MPC_solver(cart_u, desired_u, limit_u, 0, n, t, True, variables = cached_var, vel_limit = 0.3, acc = 0, curr_vel=vel_u)
         u_array = cached_var.get("points")
 
         mpc_point_arr = np.transpose(np.row_stack((e_array, n_array, u_array)))
         
 
         # print("Generated vel:\t",velocity_e_des,"Current vel:\t", vel_e, "Aruco E:\t", aruco_e)
-        print("Current E:\t", cart_e, "Current N:\t", cart_n, "Current U:\t", cart_u)
-        print("Generated Z velocity:\t", velocity_u_des, "Current Z velocity:\t", vel_u)
-        velocity_e_des = clamp(velocity_e_des, 0.5)
-        velocity_n_des = clamp(velocity_n_des, 0.5)
-        velocity_u_des = clamp(velocity_u_des, 0.5)
+        # print("Current E:\t", cart_e, "Current N:\t", cart_n, "Current U:\t", cart_u)
+        # print("Generated Z velocity:\t", velocity_u_des, "Current Z velocity:\t", vel_u)
+        # velocity_e_des = clamp(velocity_e_des, 0.5)
+        # velocity_n_des = clamp(velocity_n_des, 0.5)
+        # velocity_u_des = clamp(velocity_u_des, 0.5)
 
         pub1.publish(twist_obj(velocity_e_des, velocity_n_des, velocity_u_des, 0.0, 0.0, 0.0))
         # pub1.publish(twist_obj(velocity_e_des, 0, 0, 0.0, 0.0, 0.0))
@@ -425,7 +428,7 @@ def run_control():
                 csvfile.close()
 
                 is_writing = False
-                pub7.publish(pose_obj(0, 0, 10, 0, 0, 0, 0))
+                pub7.publish(pose_obj(0, 0, 6, 0, 0, 0, 0))
                 sys.exit()
             # print(time.time() - start_time)
             # if(not armed):

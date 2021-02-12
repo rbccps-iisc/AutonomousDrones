@@ -30,7 +30,7 @@ from MPC import MPC_solver
 global R
 global roll, pitch, yaw
 
-hz                                      = 20.0
+hz                                      = 10.0
 n                                       = 15
 t                                       = 1/hz
 print(t, hz)
