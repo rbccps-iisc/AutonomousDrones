@@ -437,6 +437,7 @@ def run_control():
 
         if(data_timer > 0.1):
             writer.writerow([rospy.get_time(), float(cart_e), float(cart_n), float(cart_u), float(vel_e), float(vel_n), float(vel_u), float(velocity_e_des), float(velocity_n_des), float(velocity_u_des)])
+            data_timer = 0.
             # csvfile.close()
 
         if(detected_aruco):

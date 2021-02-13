@@ -98,6 +98,9 @@ class ArucoSingleTracker():
         self.fps_read    = 0.0
         self.fps_detect  = 0.0    
 
+        file_str = str(datetime.now().year) + '_' + str(datetime.now().month) + '_' + str(datetime.now().day) + '_' + str(datetime.now().hour) + '_' + str(datetime.now().minute) + '.avi'
+        self.out = cv2.VideoWriter(file_str,cv2.VideoWriter_fourcc('X','V','I','D'), 10, (self.camera_size[0],self.camera_size[1]))
+
     def imageCb(self, msg):
         self.frame = self.bridge.imgmsg_to_cv2(msg, "bgr8")
 
@@ -142,16 +145,13 @@ class ArucoSingleTracker():
     def stop(self):
         self._kill = True
 
-    def track(self, loop=True, verbose=False, show_video=None):       
+    def track(self, loop=True, verbose=False, show_video=None):
         self._kill = False
         if show_video is None: show_video = self._show_video
         
         marker_found = False
         x = y = z = 0
         #rate = rospy.Rate(30)
-
-        file_str = str(datetime.now().year) + '_' + str(datetime.now().month) + '_' + str(datetime.now().day) + '_' + str(datetime.now().hour) + '_' + str(datetime.now().minute) + '.avi'
-        out = cv2.VideoWriter(file_str,cv2.VideoWriter_fourcc('X','V','I','D'), 10, (self.camera_size[0],self.camera_size[1]))
 
         while not self._kill and not rospy.is_shutdown():
             
@@ -237,7 +237,7 @@ class ArucoSingleTracker():
 
                 if ret_vid ==True:
                     #frame = cv2.flip(frame,0)
-                    out.write(frame)
+                    self.out.write(frame)
 
                     #--- use 'q' to quit
                     key = cv2.waitKey(1) & 0xFF
@@ -267,4 +267,5 @@ if __name__ == "__main__":
     aruco_tracker = ArucoSingleTracker(id_to_find=id_to_find, marker_size=marker_size, show_video=True, camera_matrix=camera_matrix, camera_distortion=camera_distortion)
     
     aruco_tracker.track(verbose=True)
+    # aruco_tracker.track(loop = False)
 
