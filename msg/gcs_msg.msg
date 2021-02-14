@@ -1,0 +1,12 @@
+string command
+float64 lat
+float64 lon
+float64 home_lat
+float64 home_lon
+float64 x_diff
+float64 y_diff
+float64 x
+float64 y
+float64 height
+float64 yaw
+int16 waypoint

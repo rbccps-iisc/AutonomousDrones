@@ -157,7 +157,7 @@
           </geometry>
           <material>
             <script>
-              <name>Gazebo/DarkGrey</name>
+              <name>Gazebo/Red</name>
               <uri>__default__</uri>
             </script>
           </material>
@@ -466,7 +466,7 @@
           </geometry>
           <material>
             <script>
-              <name>Gazebo/DarkGrey</name>
+              <name>Gazebo/Red</name>
               <uri>__default__</uri>
             </script>
           </material>
@@ -632,7 +632,7 @@
           </geometry>
           <material>
             <script>
-              <name>Gazebo/DarkGrey</name>
+              <name>Gazebo/Red</name>
               <uri>__default__</uri>
             </script>
           </material>
@@ -1169,7 +1169,7 @@
           </geometry>
           <material>
             <script>
-              <name>Gazebo/DarkGrey</name>
+              <name>Gazebo/Red</name>
               <uri>__default__</uri>
             </script>
           </material>
@@ -1478,7 +1478,7 @@
           </geometry>
           <material>
             <script>
-              <name>Gazebo/DarkGrey</name>
+              <name>Gazebo/Red</name>
               <uri>__default__</uri>
             </script>
           </material>
@@ -1644,7 +1644,7 @@
           </geometry>
           <material>
             <script>
-              <name>Gazebo/DarkGrey</name>
+              <name>Gazebo/Red</name>
               <uri>__default__</uri>
             </script>
           </material>
@@ -2181,7 +2181,7 @@
           </geometry>
           <material>
             <script>
-              <name>Gazebo/DarkGrey</name>
+              <name>Gazebo/Red</name>
               <uri>__default__</uri>
             </script>
           </material>
@@ -2490,7 +2490,7 @@
           </geometry>
           <material>
             <script>
-              <name>Gazebo/DarkGrey</name>
+              <name>Gazebo/Red</name>
               <uri>__default__</uri>
             </script>
           </material>
@@ -2656,7 +2656,7 @@
           </geometry>
           <material>
             <script>
-              <name>Gazebo/DarkGrey</name>
+              <name>Gazebo/Red</name>
               <uri>__default__</uri>
             </script>
           </material>
@@ -4211,13 +4211,13 @@
         </link>
       </model>
       <model name='Marker1'>
-        <pose frame=''>0.010588 2.70858 0.020142 3.14159 1.57079 3.14159</pose>
+        <pose frame=''>-0.25 0 0.01 3.14159 1.57079 3.14159</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose frame=''>0.010588 2.70858 0.020142 3.14159 1.57079 3.14159</pose>
+          <pose frame=''>-0.25 0 0.01 3.14159 1.57079 3.14159</pose>
           <velocity>0 0 0 0 -0 0</velocity>
           <acceleration>0 0 0 0 -0 0</acceleration>
-          <wrench>0 0 0 0 -0 0</wrench>
+          <wrench>0 0 0 0 -0 0</wrench>   
         </link>
       </model>
       <model name='ground_plane'>

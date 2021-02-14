@@ -11,6 +11,9 @@ sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 import rospy, mavros, time
 from mavros import command
 
+import argparse
+import threading
+
 import numpy as np
 from tf.transformations import euler_from_quaternion
 
@@ -24,9 +27,9 @@ from geometry_msgs.msg import PointStamped, TwistStamped, PoseStamped, PoseWithC
 
 from std_msgs.msg import String, Int16
 from gazebo_msgs.msg import ModelStates
-from multidrone_mission.msg import drone
+from multidrone_mission.msg import gcs_msg
 
-#number of drones/robots
+#number of drones/drones
 ndr = 2
 
 class drone_params(object):
@@ -80,124 +83,148 @@ def main():
 	rospy.init_node('gcs_control')
 	rate = rospy.Rate(10)
 	
-	robot = [None]*ndr
+	drone = [None]*ndr
 
 	for i in range(ndr):
-		robot[i] = drone_params()
+		drone[i] = drone_params()
 
-	rospy.Subscriber('/drone1/mavros/global_position/global', NavSatFix, robot[0].global_pos_cb)
-	rospy.Subscriber('/drone1/mavros/global_position/local', Odometry, robot[0].local_pos_cb)
-	rospy.Subscriber('/drone1/mavros/imu/data', Imu, robot[0].ori_cb)
-	rospy.Subscriber('/drone1/mavros/state', State, robot[0].armed_cb)
-	rospy.Subscriber('/drone1/mavros/mission/waypoints', WaypointList, robot[0].waypoint_cb)
-	rospy.Subscriber('/drone1_status', String, robot[0].status_cb)
-	rospy.Subscriber('/drone1_battery', Int16, robot[0].bat_cb)
-	pub_home_1 = rospy.Publisher('/drone1/mavros/global_position/home', HomePosition, queue_size=1)
+	rospy.Subscriber('/drone1/mavros/global_position/global', NavSatFix, drone[0].global_pos_cb)
+	rospy.Subscriber('/drone1/mavros/global_position/local', Odometry, drone[0].local_pos_cb)
+	rospy.Subscriber('/drone1/mavros/imu/data', Imu, drone[0].ori_cb)
+	rospy.Subscriber('/drone1/mavros/state', State, drone[0].armed_cb)
+	rospy.Subscriber('/drone1/mavros/mission/waypoints', WaypointList, drone[0].waypoint_cb)
+	rospy.Subscriber('/drone1_status', String, drone[0].status_cb)
+	rospy.Subscriber('/drone1_battery', Int16, drone[0].bat_cb)
+	pub_home_1 = rospy.Publisher('/drone1/mavros/global_position/home', HomePosition, queue_size=10)
 
-	rospy.Subscriber('/drone2/mavros/global_position/global', NavSatFix, robot[1].global_pos_cb)
-	rospy.Subscriber('/drone2/mavros/global_position/local',Odometry, robot[1].local_pos_cb)
-	rospy.Subscriber('/drone2/mavros/imu/data', Imu, robot[1].ori_cb)
-	rospy.Subscriber('/drone2/mavros/state', State, robot[1].armed_cb)
-	rospy.Subscriber('/drone2/mavros/mission/waypoints', WaypointList, robot[1].waypoint_cb)
-	rospy.Subscriber('/drone2_status', String, robot[1].status_cb)
-	rospy.Subscriber('/drone2_battery', Int16, robot[1].bat_cb)
-	pub_home_2 = rospy.Publisher('/drone2/mavros/global_position/home', HomePosition, queue_size=1)
+	rospy.Subscriber('/drone2/mavros/global_position/global', NavSatFix, drone[1].global_pos_cb)
+	rospy.Subscriber('/drone2/mavros/global_position/local',Odometry, drone[1].local_pos_cb)
+	rospy.Subscriber('/drone2/mavros/imu/data', Imu, drone[1].ori_cb)
+	rospy.Subscriber('/drone2/mavros/state', State, drone[1].armed_cb)
+	rospy.Subscriber('/drone2/mavros/mission/waypoints', WaypointList, drone[1].waypoint_cb)
+	rospy.Subscriber('/drone2_status', String, drone[1].status_cb)
+	rospy.Subscriber('/drone2_battery', Int16, drone[1].bat_cb)
+	pub_home_2 = rospy.Publisher('/drone2/mavros/global_position/home', HomePosition, queue_size=10)
 
-	#rospy.Subscriber('/drone3/mavros/global_position/global', NavSatFix, robot[2].global_pos_cb)
-	#rospy.Subscriber('/drone3/mavros/local_position/pose', PoseStamped, robot[2].local_pos_cb)
-	#rospy.Subscriber('/drone3/mavros/imu/data', Imu, robot[2].ori_cb)
-	#rospy.Subscriber('/drone3/mavros/state', State, robot[2].armed_cb)
-	#rospy.Subscriber('/drone3/mavros/mission/waypoints', WaypointList, waypoint_cb)
-	#rospy.Subscriber('/drone3_status', String, robot[2].status_cb)
-	#rospy.Subscriber('/drone3_battery', Int16, robot[2].bat_cb)
-	#pub_home_3 = rospy.Publisher('/drone3/mavros/global_position/home', HomePosition, queue_size=1)
 
-	pub_home = HomePosition()
-	pub_home.geo.latitude = 13.027205
-	pub_home.geo.longitude = 77.563607
-	pub_home.geo.altitude = 931
+	'''
+	set_home_1 = rospy.ServiceProxy('/drone1/mavros/cmd/set_home', CommandHome)
+	set_home_2 = rospy.ServiceProxy('/drone2/mavros/cmd/set_home', CommandHome)
 
-	pub_cmd = rospy.Publisher('gcs_command', drone, queue_size=1)
-	cmd = drone()
+	time.sleep(1)
+	set_home_1(current_gps=True)
+	time.sleep(1)
+	set_home_2(current_gps=False,yaw=float('nan'),latitude=drone[0].cur_lat,longitude=drone[0].cur_lon,altitude=915)
+	'''
 	
+	time.sleep(1)
+	pub_home = HomePosition()
+	pub_home.geo.latitude = drone[0].cur_lat
+	pub_home.geo.longitude = drone[0].cur_lon
+	pub_home.geo.altitude = drone[0].cur_absalt
+	time.sleep(1)
+	pub_home_1.publish(pub_home)
+	time.sleep(1)
+	pub_home_2.publish(pub_home)
+	time.sleep(1)
+
+	x_diff, y_diff = [None]*ndr , [None]*ndr
+
+	x_diff[0] = drone[0].cur_x - drone[0].cur_x
+	y_diff[0] = drone[0].cur_y - drone[0].cur_y
+
+	x_diff[1] = drone[0].cur_x - drone[1].cur_x
+	y_diff[1] = drone[0].cur_y - drone[1].cur_y
+	
+	#Checking if home location is set properly
+	for i in range(ndr):
+		if(drone[i].cur_x+x_diff[i]>0.1 and drone[0].cur_y+y_diff[i]>0.1):
+			print('drone' + str(i+1) + ' Home Location ERROR')
+			exit()
+		
+
+	home_lat = drone[0].cur_lat
+	home_lon = drone[0].cur_lon
+
+	pub_cmd = rospy.Publisher('gcs_command', gcs_msg, queue_size=1)
+	cmd = gcs_msg()
+
+	cmd.home_lat = home_lat
+	cmd.home_lon = home_lon
+
+
 	start = False
 
+	while not rospy.is_shutdown():	
 
-	while not rospy.is_shutdown():
-	
-		pub_home_1.publish(pub_home)
-		pub_home_2.publish(pub_home)	
-		
 		if not start:
 	
 			start = True
 			
 			time.sleep(1)
 			cmd.command = 'drone1 takeoff'
-			cmd.lat = float('nan')
-			cmd.lon = float('nan')
+			cmd.x_diff = float('nan')
+			cmd.y_diff = float('nan')
+			cmd.x = float('nan')
+			cmd.y = float('nan')
 			cmd.height = float('nan')
 			cmd.yaw = float('nan')
 			cmd.waypoint = 1
 			pub_cmd.publish(cmd)
 			time.sleep(1)
 
-			cmd.command = 'none'
+			while(drone[0].status!='drone1 at location'):
+				continue
+
+			cmd.command = 'drone1 do mission'
 			pub_cmd.publish(cmd)
-
-
-			#time.sleep(20)
-			if robot[0].armed:
-				while(robot[0].status!='drone1 at location'):
-					continue
-				cmd.command = 'drone1 do mission'
-				pub_cmd.publish(cmd)
-				time.sleep(1)
-			else:
-				print('ERROR')
-				exit()
+			time.sleep(1)
 
 		else:
 
-			if robot[0].status == 'drone1 need replacement':
+			if drone[0].status == 'drone1 need replacement':
 
-				if  not robot[1].armed:
-				
+				if  not drone[1].armed:
+
+					mission_height = drone[0].cur_alt
+					mission_waypoint = drone[0].waypoint
+					mission_x = drone[0].cur_x
+					mission_y = drone[0].cur_y
+					mission_yaw = drone[0].yaw
+
 					cmd.command = 'drone1 replacement ready'
-					cmd.lat = robot[0].cur_lat
-					cmd.lon = robot[0].cur_lon
-					cmd.height =  1.5 * robot[0].cur_alt
-					cmd.yaw = robot[0].yaw
-					mission_height = robot[0].cur_alt
-					mission_waypoint = robot[0].waypoint
+					cmd.x = drone[0].cur_x
+					cmd.y = drone[0].cur_y
+					cmd.x_diff = x_diff[0]
+					cmd.y_diff = y_diff[0]
+					cmd.height =  1.5 * drone[0].cur_alt
+					cmd.yaw = drone[0].yaw
 					pub_cmd.publish(cmd)
 					time.sleep(1)
 
-					while robot[0].status != 'drone1 ready for replacement':
-						cmd.command = 'none'
-						pub_cmd.publish(cmd)
-						time.sleep(1)
+					while drone[0].status != 'drone1 ready for replacement':		
 						continue
 					
 					cmd.command = 'drone2 takeoff'
-					cmd.lat = robot[0].cur_lat
-					cmd.lon = robot[0].cur_lon
+					cmd.x = mission_x
+					cmd.y = mission_y
+					cmd.x_diff = x_diff[1]
+					cmd.y_diff = y_diff[1]
 					cmd.height = mission_height
-					cmd.yaw = robot[0].yaw
+					cmd.yaw = mission_yaw
 					pub_cmd.publish(cmd)
 					time.sleep(1)
 
-					while abs(robot[1].cur_x - robot[0].cur_x) >= 0.1 and abs(robot[1].cur_y - robot[0].cur_y) >= 0.1 :
-						cmd.command = 'none'
-						pub_cmd.publish(cmd)
-						time.sleep(1)
+					while(drone[1].status!='drone2 at location'):
 						continue
 
 					cmd.command = 'drone1 land'
+					cmd.x_diff = x_diff[0]
+					cmd.y_diff = y_diff[0]
 					pub_cmd.publish(cmd)
 					time.sleep(1)
 			
-					if robot[1].armed:
+					if drone[1].armed:
 						cmd.command = 'drone2 do mission'
 						cmd.waypoint = mission_waypoint
 						pub_cmd.publish(cmd)
@@ -209,45 +236,49 @@ def main():
 					print('ERROR')
 					exit()
 
-			if robot[1].status == 'drone2 need replacement':
+			if drone[1].status == 'drone2 need replacement':
 
-				if  not robot[0].armed:
-				
+				if  not drone[0].armed:
+
+					mission_height = drone[1].cur_alt
+					mission_waypoint = drone[1].waypoint
+					mission_x = drone[1].cur_x
+					mission_y = drone[1].cur_y
+					mission_yaw = drone[1].yaw
+
 					cmd.command = 'drone2 replacement ready'
-					cmd.lat = robot[1].cur_lat
-					cmd.lon = robot[1].cur_lon
-					cmd.height =  1.5 * robot[1].cur_alt
-					cmd.yaw = robot[1].yaw
-					mission_height = robot[1].cur_alt
-					mission_waypoint = robot[1].waypoint
+					cmd.x = drone[1].cur_x 
+					cmd.y = drone[1].cur_y
+					cmd.x_diff = x_diff[1]
+					cmd.y_diff = y_diff[1]
+					cmd.height =  1.5 * drone[1].cur_alt
+					cmd.yaw = drone[1].yaw
 					pub_cmd.publish(cmd)
 					time.sleep(1)
 
-					while robot[1].status != 'drone2 ready for replacement':
-						cmd.command = 'none'
-						pub_cmd.publish(cmd)
-						time.sleep(1)
+					while drone[1].status != 'drone2 ready for replacement':
 						continue
 					
 					cmd.command = 'drone1 takeoff'
-					cmd.lat = robot[1].cur_lat
-					cmd.lon = robot[1].cur_lon
+					cmd.x = mission_x
+					cmd.y = mission_y
+					cmd.x_diff = x_diff[0]
+					cmd.y_diff = y_diff[0]
 					cmd.height = mission_height
-					cmd.yaw = robot[1].yaw
+					cmd.yaw = mission_yaw
 					pub_cmd.publish(cmd)
 					time.sleep(1)
 
-					while abs(robot[0].cur_x - robot[1].cur_x) >= 0.1 and abs(robot[0].cur_y - robot[1].cur_y) >= 0.1 :
-						cmd.command = 'none'
-						pub_cmd.publish(cmd)
-						time.sleep(1)
+					while(drone[0].status!='drone1 at location'):
 						continue
 
 					cmd.command = 'drone2 land'
+					cmd.x_diff = x_diff[1]
+					cmd.y_diff = y_diff[1]
 					pub_cmd.publish(cmd)
 					time.sleep(1)
 			
-					if robot[1].armed:
+					if drone[0].armed:
 						cmd.command = 'drone1 do mission'
 						cmd.waypoint = mission_waypoint
 						pub_cmd.publish(cmd)
@@ -259,11 +290,9 @@ def main():
 					print('ERROR')
 					exit()
 
-
-		cmd.command = 'none'
-		pub_cmd.publish(cmd)
 		rate.sleep()
 
 
 if __name__ == '__main__':
+	
 	main()
