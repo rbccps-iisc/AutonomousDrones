@@ -31,7 +31,7 @@ global roll, pitch, yaw
 desired_e                               = 0
 desired_n                               = 0
 desired_u                               = 6
-hz                                      = 10.0
+hz                                      = 20.0
 n                                       = 15
 t                                       = 1/hz
 print(t, hz)
@@ -73,6 +73,7 @@ gu_e = gu_n = gu_u = e_0 = n_0          = 0
 hold_timer                              = 0.
 file_str                                = ''
 is_writing                              = False
+start_timer				= 0.
 
 id_to_find          = 72
 marker_size         = 50
@@ -358,7 +359,7 @@ def main():
     if(cart_u < 1):
         time.sleep(0.5)
         set_takeoff(0, 0, None, None, 6)
-        # set_mode(0, 'AUTO.TAKEOFF')
+        #set_mode(0, 'AUTO.TAKEOFF')
 
     while cart_u < 2 and not rospy.is_shutdown() and getattr(main_thread, "do_run", True): continue
 
@@ -369,7 +370,7 @@ def main():
 
 def run_control():
     global home_u_recorded, desired_e, desired_n, desired_u, home_yaw, armed, hold_timer, nsteps_slider, speed_slider, acc_slider
-    global cont, n, t, start_time, detected_aruco, time_taken, cached_var, main_thread, delta_time, rate_slider, writer, is_writing
+    global cont, n, t, start_time, detected_aruco, time_taken, cached_var, main_thread, delta_time, rate_slider, writer, is_writing, start_timer
     xAnt = yAnt = 0
     acc = 0
     max_acc = acc_slider.value
@@ -389,7 +390,7 @@ def run_control():
     data_timer = 0.
 
     while not rospy.is_shutdown() and getattr(main_thread, "do_run", True):
-
+	start_timer = time.time()
         if home_u_recorded is False and cart_u != 0 and yaw != 0:
             # desired_u = cart_u + 3
             home_yaw = yaw
@@ -506,7 +507,8 @@ def run_control():
             if cont > max_append and len(path.poses) != 0 and len(ekf_path.poses):
                     path.poses.pop(0)
                     ekf_path.poses.pop(0)
-
+	
+	print(time.time() - start_timer)
         rate.sleep()
 
         
