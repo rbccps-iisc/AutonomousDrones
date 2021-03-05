@@ -104,7 +104,7 @@ def MPC_solver(actual=0., desired=0., pos_limit=1000, origin=0, nsteps=10.,inter
 			for x in it:
 				vel_relaxed = abs(-acc * int(it.index) * interval + abs(curr_vel))
 
-				if(vel_relaxed >= vel_limit):
+				if(vel_relaxed > vel_limit):
 					x[...] = vel_relaxed + 0.0001
 
 				else:
@@ -179,7 +179,7 @@ def MPC_solver(actual=0., desired=0., pos_limit=1000, origin=0, nsteps=10.,inter
 
 if __name__ == "__main__":
 	np.set_printoptions(precision=None, threshold=None, edgeitems=None, linewidth=1000, suppress=None, nanstr=None, infstr=None, formatter=None)
-	u_in, update_var, _ = MPC_solver(actual=3.5, desired=6, pos_limit=100, origin=0, nsteps=15, ret_points=True, vel_limit = 0.5, interval = .1, acc = 0, curr_vel=2)
+	u_in, update_var, _ = MPC_solver(actual=-0.887, desired=0, pos_limit=100, origin=0, nsteps=15, ret_points=True, vel_limit = 0.2, interval = .1, acc = 1, curr_vel=0.4636)
 	# print(update_var.get("points"))
 	# MPC_solver(0, 3, 100, 0, 10, variables=update_var)
 	# MPC_solver(0, 3, 100, 0, 10, variables=update_var)

@@ -21,7 +21,7 @@ from nav_msgs.msg import Path, Odometry
 from visualization_msgs.msg import Marker
 from math import pow, sqrt
 
-# from gazebo_msgs.msg import ModelStates, ContactsState
+from gazebo_msgs.msg import ModelStates, ContactsState
 
 from sensor_msgs.msg import Imu, NavSatFix
 from tf.transformations import euler_from_quaternion
@@ -70,14 +70,14 @@ time_taken                              = 0
 start_clock                             = False
 contact_made                            = False
 init_pose                               = False
-gu_e = gu_n = gu_u = e_0 = n_0          = 0
+gz_e = gz_n = gz_u = e_0 = n_0          = 0
 
 id_to_find          = 72
-marker_size         = 20
+marker_size         = 50
 cwd                 = path.dirname(path.abspath(__file__))
 calib_path          = cwd+"/../opencv/"
-camera_distortion   = np.loadtxt(calib_path+'cameraDistortion.txt', delimiter=',')                                      
-camera_matrix       = np.loadtxt(calib_path+'cameraMatrix.txt', delimiter=',')
+camera_distortion   = np.loadtxt(calib_path+'cameraDistortionSim.txt', delimiter=',')                                      
+camera_matrix       = np.loadtxt(calib_path+'cameraMatrixSim.txt', delimiter=',')
 
 file_str = '_' + str(datetime.now().month) + '_' + str(datetime.now().day) + '_' + str(datetime.now().hour) + '_' + str(datetime.now().minute) + '.csv'
 
@@ -98,15 +98,19 @@ def clamp(num, value):
 
 
 def get_pos_cb(data):
-    global gu_e, gu_n, gu_u, e_0, n_0, init_pose
+    global gz_e, gz_n, gz_u, e_0, n_0, init_pose, vel_e, vel_n, vel_u
 
-    gu_e = data.pose[2].position.x
-    gu_n = data.pose[2].position.y
-    gu_u = data.pose[2].position.z
+    gz_e = data.pose[0].position.x
+    gz_n = data.pose[0].position.y
+    gz_u = data.pose[0].position.z
+
+    # vel_e = -data.twist[0].linear.y
+    # vel_n = data.twist[0].linear.x
+    # vel_u = data.twist[0].linear.z
  
     if not init_pose:
-        e_0 = gu_e
-        n_0 = gu_n
+        e_0 = gz_e
+        n_0 = gz_n
         init_pose = True
 
 
@@ -122,8 +126,8 @@ def contact_cb(data):
         contact_made = True
         contact_force = contact[0].total_wrench.force.z
         r_0 = sqrt(pow(e_0,2)+pow(n_0,2))
-        e_err = gu_e
-        n_err = gu_n
+        e_err = gz_e
+        n_err = gz_n
         r_err = sqrt(pow(e_err,2)+pow(n_err,2))
         print(current_time, start_time)
         t = (current_time-start_time).to_sec()
@@ -261,7 +265,7 @@ def main():
     
     rate = rospy.Rate(hz)
 
-    aruco_tracker       = ArucoSingleTracker(id_to_find=id_to_find, marker_size=marker_size, show_video=True, camera_distortion=camera_distortion, camera_matrix=camera_matrix)
+    aruco_tracker       = ArucoSingleTracker(id_to_find=id_to_find, marker_size=marker_size, show_video=True, camera_distortion=camera_distortion, camera_matrix=camera_matrix, simulation=True)
 
     tf_buff = tf2_ros.Buffer()
     tf_listener = tf2_ros.TransformListener(tf_buff)
@@ -271,14 +275,16 @@ def main():
     rospy.Subscriber("/mavros/global_position/local", Odometry, gps_local_cb)
     rospy.Subscriber("/mavros/local_position/pose", PoseStamped, pose_cb)
     rospy.Subscriber("/move_base_simple/goal", PoseStamped, calc_target_cb)
-    # rospy.Subscriber("/gazebo/model_states", ModelStates, get_pos_cb)
-    rospy.Subscriber("/mavros/local_position/velocity_local", TwistStamped, velocity_cb)
+    rospy.Subscriber("/gazebo/model_states", ModelStates, get_pos_cb)
+    # rospy.Subscriber("/mavros/local_position/velocity_local", TwistStamped, velocity_cb)
+    rospy.Subscriber("/mavros/global_position/raw/gps_vel", TwistStamped, velocity_cb)
     rospy.Subscriber("/mavros/state", State, armed_cb)
 
     #time subscriber
     rospy.Subscriber('clock', Clock, clock_cb)
 
     pub = rospy.Publisher('destination_point', PointStamped, queue_size = 1)
+    pub1 = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel', TwistStamped, queue_size = 1)
     pub2 = rospy.Publisher('gps_point', PointStamped, queue_size = 5)
     pub3 = rospy.Publisher('boundarn_cube', Marker, queue_size = 1)
     pub4 = rospy.Publisher('path', Path, queue_size=1)
@@ -304,7 +310,7 @@ def main():
 
     mavros.command.arming(True)
     set_mode(0, 'GUIDED')
-    if(cart_u < 1):
+    if(cart_u < 5):
 
         set_takeoff(0, 0, None, None, 5.5)
         # set_mode(0, 'AUTO.TAKEOFF')
@@ -337,7 +343,7 @@ def main():
         # desired_yaw = 360.0 + desired_yaw if desired_yaw < 0 else desired_yaw
 
         aruco_cam_pos = tf2_geometry_msgs.PointStamped(header=Header(stamp=rospy.Time.now(), frame_id='base_link'))
-        aruco_cam_pos.point.x = -y_cm/100
+        aruco_cam_pos.point.x = y_cm/100
         aruco_cam_pos.point.y = x_cm/100
         aruco_cam_pos.point.z = z_cm/100
 
@@ -389,12 +395,12 @@ def main():
 
         #     mpc_point_arr = np.transpose(np.row_stack((e_array, n_array, u_array)))
         
-        print("Generated vel:\t",velocity_e_des,"Current vel:\t", vel_e)
-        print("Orig E:\t", y_cm, "Orig N:\t", x_cm)
+        print("Generated vel E:\t",velocity_e_des,"Current vel E:\t", vel_e)
+        print("Generated vel N:\t",velocity_n_des,"Current vel N:\t", vel_n)
         print("Aruco E:\t", aruco_e, "Aruco N:\t", aruco_n)
-        # velocity_e_des = clamp(velocity_e_des, 1.5)
-        # velocity_n_des = clamp(velocity_n_des, 1.5)
-        # velocity_u_des = clamp(velocity_u_des, 1.5)
+        velocity_e_des = clamp(velocity_e_des, 0.3)
+        velocity_n_des = clamp(velocity_n_des, 0.3)
+        velocity_u_des = clamp(velocity_u_des, 0.3)
 
         data_timer = data_timer + delta_time
 
@@ -404,18 +410,17 @@ def main():
 
         dist = sqrt((aruco_e)**2+(aruco_n)**2)#+(aruco_u)**2)
 
-        if(aruco_e < 1):
+        if(dist < 1):
             hold_timer = hold_timer + delta_time
 
-            velocity_e_des = velocity_n_des = 0
-            if(hold_timer > 5):
-                # set_mode(0, 'LAND')
-                csvfile.close()
+            # velocity_e_des = velocity_n_des = 0
+            # if(hold_timer > 5):
+            #     # set_mode(0, 'LAND')
+            #     csvfile.close()
 
-                sys.exit()
+            #     sys.exit()
 
-        pub1.publish(twist_obj(velocity_e_des, 0, 0.0, 0.0, 0.0, 0.0))
-        # pub1.publish(twist_obj(velocity_e_des, 0, 0, 0.0, 0.0, 0.0))
+        pub1.publish(twist_obj(velocity_e_des, velocity_n_des, 0.0, 0.0, 0.0, 0.0))
 
         if(acc > abs(max_acc)):
             max_acc = abs(acc)
@@ -508,7 +513,6 @@ def main():
         
 if __name__ == "__main__":
     mavros.set_namespace("/mavros")
-    pub1 = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel', TwistStamped, queue_size = 1)
     path = Path() 
     np.set_printoptions(precision=None, threshold=None, edgeitems=None, linewidth=1000, suppress=None, nanstr=None, infstr=None, formatter=None)
     main()

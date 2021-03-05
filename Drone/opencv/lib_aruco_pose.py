@@ -52,7 +52,9 @@ class ArucoSingleTracker():
                 camera_matrix,
                 camera_distortion,
                 camera_size=[640,480],
-                show_video=False
+                show_video=False,
+                simulation=False,
+                record_video=False
                 ):
         
         #rospy.init_node('cam_capture')
@@ -65,6 +67,8 @@ class ArucoSingleTracker():
         self.id_to_find     = id_to_find
         self.marker_size    = marker_size
         self._show_video    = show_video
+        self.simulation     = simulation
+        self.record_video   = record_video
         
         self.camera_size = camera_size
         
@@ -156,8 +160,11 @@ class ArucoSingleTracker():
         while not self._kill and not rospy.is_shutdown():
             
             #-- Read the camera frame
-            frame = self.frame
-            ret_vid , frame = self._cap.read()
+            if(self.simulation):
+                frame = self.frame
+
+            else:
+                ret_vid, frame = self._cap.read()
 
             self._update_fps_read()
             
@@ -233,22 +240,18 @@ class ArucoSingleTracker():
                 dim = (160,120)
                 frame_new = cv2.resize(frame, dim, interpolation =cv2.INTER_AREA)
                 #cv2.imwrite(file,)
-                cv2.imshow('frame', frame_new)
+                cv2.imshow('frame', frame)
 
-                if ret_vid ==True:
-                    #frame = cv2.flip(frame,0)
-                    self.out.write(frame)
+                if self.record_video:
+                    if ret_vid == True:
+                        #frame = cv2.flip(frame,0)
+                        self.out.write(frame)
 
-                    #--- use 'q' to quit
-                    key = cv2.waitKey(1) & 0xFF
-                    if key == ord('q'):
-                        self._cap.release()
-                        cv2.destroyAllWindows()
-
-                #self._cap.release()
-                #out.release()
-                #cv2.destroyAllWindows()
-
+                        #--- use 'q' to quit
+                key = cv2.waitKey(1) & 0xFF
+                if key == ord('q'):
+                    self._cap.release()
+                    cv2.destroyAllWindows()
 
 
             
