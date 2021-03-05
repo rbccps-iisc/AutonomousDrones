@@ -8,7 +8,7 @@ sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from datetime import datetime
 from opencv.lib_aruco_pose import ArucoSingleTracker
-from sensor_msgs.msg import Joy
+from sensor_msgs.msg import Joy, Range
 from std_msgs.msg import Header, Float32, Float64, Empty
 from geometry_msgs.msg import PoseStamped, TwistStamped, Vector3, Quaternion, Point, Twist, PointStamped
 from rosgraph_msgs.msg import Clock
@@ -31,7 +31,7 @@ from MPC import MPC_solver
 global R
 global roll, pitch, yaw
 
-hz                                      = 10.0
+hz                                      = 5.0
 n                                       = 15
 t                                       = 1/hz
 print(t, hz)
@@ -167,7 +167,7 @@ def gps_local_cb(data):
 
     cart_e = data.pose.pose.position.x
     cart_n = data.pose.pose.position.y
-    cart_u = data.pose.pose.position.z
+    # cart_u = data.pose.pose.position.z
 
     if home_en_recorded is False and cart_e != 0 and cart_n != 0:
         home_e = cart_e
@@ -254,6 +254,11 @@ def armed_cb(data):
     armed = data.armed
 
 
+def range_cb(data):
+    global cart_u
+    cart_u = data.range
+
+
 def main():
     global home_en_recorded, home_u_recorded, cart_e, cart_n, cart_u, desired_e, desired_n, desired_u, home_yaw, aruco_e, aruco_n, aruco_u, armed
     global home_e, home_u, home_n, limit_e, limit_n, limit_u, cont, n, t, start_time, cached_var, detected_aruco, time_taken, delta_time, writer, csvfile
@@ -275,10 +280,11 @@ def main():
     rospy.Subscriber("/mavros/global_position/local", Odometry, gps_local_cb)
     rospy.Subscriber("/mavros/local_position/pose", PoseStamped, pose_cb)
     rospy.Subscriber("/move_base_simple/goal", PoseStamped, calc_target_cb)
-    rospy.Subscriber("/gazebo/model_states", ModelStates, get_pos_cb)
-    # rospy.Subscriber("/mavros/local_position/velocity_local", TwistStamped, velocity_cb)
-    rospy.Subscriber("/mavros/global_position/raw/gps_vel", TwistStamped, velocity_cb)
+    # rospy.Subscriber("/gazebo/model_states", ModelStates, get_pos_cb)
+    rospy.Subscriber("/mavros/local_position/velocity_local", TwistStamped, velocity_cb)
+    # rospy.Subscriber("/mavros/global_position/raw/gps_vel", TwistStamped, velocity_cb)
     rospy.Subscriber("/mavros/state", State, armed_cb)
+    rospy.Subscriber("/mavros/rangefinder/rangefinder", Range, range_cb)
 
     #time subscriber
     rospy.Subscriber('clock', Clock, clock_cb)
@@ -348,7 +354,7 @@ def main():
         aruco_cam_pos.point.z = z_cm/100
 
         try:
-            p = tf_buff.transform(aruco_cam_pos, "base_link_att_comp", timeout=rospy.Duration(0.1))
+            p = tf_buff.transform(aruco_cam_pos, "base_link_att_comp", timeout=rospy.Duration(0.2))
 
         except :
             print('Oops')
@@ -363,11 +369,11 @@ def main():
             aruco_e = p.point.x
             aruco_n = p.point.y
             aruco_u = p.point.z
-            velocity_e_des, cached_var, diff = MPC_solver(aruco_e, 0, limit_e, 0, n, t, True, variables = cached_var, vel_limit = 0.2, acc=1, curr_vel=vel_e)
+            velocity_e_des, cached_var, diff = MPC_solver(aruco_e, 0, limit_e, 0, n, t, True, variables = cached_var, vel_limit = 0.1, acc=0.5, curr_vel=vel_e)
             e_array = cached_var.get("points")
-            velocity_n_des, cached_var, _ = MPC_solver(aruco_n, 0, limit_n, 0, n, t, True, variables = cached_var, vel_limit = 0.2, acc=1, curr_vel=vel_n)
+            velocity_n_des, cached_var, _ = MPC_solver(aruco_n, 0, limit_n, 0, n, t, True, variables = cached_var, vel_limit = 0.1, acc=0.5, curr_vel=vel_n)
             n_array = cached_var.get("points")
-            velocity_u_des, cached_var, _ = MPC_solver(aruco_u, 0, limit_u, 0, n, t, True, variables = cached_var, vel_limit = 0.3, acc=0, curr_vel=vel_u, debug=False)
+            velocity_u_des, cached_var, _ = MPC_solver(aruco_u, 3, limit_u, 0, n, t, True, variables = cached_var, vel_limit = 0.1, acc=0, curr_vel=vel_u, debug=False)
             u_array = cached_var.get("points")
             mpc_point_arr = np.transpose(np.row_stack((e_array, n_array, u_array)))
 
@@ -395,12 +401,12 @@ def main():
 
         #     mpc_point_arr = np.transpose(np.row_stack((e_array, n_array, u_array)))
         
-        print("Generated vel E:\t",velocity_e_des,"Current vel E:\t", vel_e)
-        print("Generated vel N:\t",velocity_n_des,"Current vel N:\t", vel_n)
-        print("Aruco E:\t", aruco_e, "Aruco N:\t", aruco_n)
-        velocity_e_des = clamp(velocity_e_des, 0.3)
-        velocity_n_des = clamp(velocity_n_des, 0.3)
-        velocity_u_des = clamp(velocity_u_des, 0.3)
+        print("Generated vel:\t",velocity_u_des,"Current vel:\t", vel_u)
+        # print("Orig E:\t", y_cm, "Orig N:\t", x_cm)
+        print("Aruco E:\t", aruco_e, "Aruco N:\t", aruco_n, "Aruco U:\t", aruco_u)
+        # velocity_e_des = clamp(velocity_e_des, 1.5)
+        # velocity_n_des = clamp(velocity_n_des, 1.5)
+        # velocity_u_des = clamp(velocity_u_des, 1.5)
 
         data_timer = data_timer + delta_time
 
@@ -410,17 +416,20 @@ def main():
 
         dist = sqrt((aruco_e)**2+(aruco_n)**2)#+(aruco_u)**2)
 
-        if(dist < 1):
+        if(dist < 0.25 and marker_found == True and cart_u < 3.25):
             hold_timer = hold_timer + delta_time
 
-            # velocity_e_des = velocity_n_des = 0
-            # if(hold_timer > 5):
-            #     # set_mode(0, 'LAND')
-            #     csvfile.close()
+            velocity_e_des = velocity_n_des = 0
 
-            #     sys.exit()
+            print("Time to land:\t", hold_timer)
+            # if(hold_timer > 3):
+            set_mode(0, 'LAND')
+            csvfile.close()
 
-        pub1.publish(twist_obj(velocity_e_des, velocity_n_des, 0.0, 0.0, 0.0, 0.0))
+            sys.exit()
+
+        pub1.publish(twist_obj(velocity_e_des, velocity_n_des, velocity_u_des, 0.0, 0.0, 0.0))
+        # pub1.publish(twist_obj(velocity_e_des, 0, 0, 0.0, 0.0, 0.0))
 
         if(acc > abs(max_acc)):
             max_acc = abs(acc)
