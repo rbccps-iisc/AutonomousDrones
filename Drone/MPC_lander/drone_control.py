@@ -6,7 +6,7 @@ import select, termios, tty, rospy, argparse, mavros, threading, time, readline,
 
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
-#from land_using_single_aruco import Land
+from datetime import datetime
 from opencv.lib_aruco_pose import ArucoSingleTracker
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Header, Float32, Float64, Empty
@@ -80,17 +80,18 @@ calib_path          = cwd+"/../opencv/"
 camera_distortion   = np.loadtxt(calib_path+'cameraDistortion.txt', delimiter=',')                                      
 camera_matrix       = np.loadtxt(calib_path+'cameraMatrix.txt', delimiter=',')
 
-if not path.isfile('test_land_algo_params_no_wind.csv'):
-    csvfile = open('test_land_algo_params_no_wind.csv','w')
-    fieldnames = ['aruco_x','aruco_y','init_x','init_y','init_r','x_err','y_err','r_err','time_elapsed','contact_force']
+file_str = '_' + str(datetime.now().month) + '_' + str(datetime.now().day) + '_' + str(datetime.now().hour) + '_' + str(datetime.now().minute) + '.csv'
+
+if not path.isfile(file_str):
+    csvfile = open(file_str,'w')
+    fieldnames = ['Time','cart_x','cart_y','cart_z','vel_x','vel_y','vel_z','desired_x','desired_n','desired_u']
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
     writer.writeheader()
     csvfile.close()
 
-# csvfile = open('test_land_algo_params_2n_y.csv','a')
+csvfile = open(file_str,'a')
 
-# writer = csv.writer(csvfile)
-
+writer = csv.writer(csvfile)
 
 def clamp(num, value):
    return max(min(num, value), -value)
@@ -121,13 +122,13 @@ def contact_cb(data):
         contact_made = True
         contact_force = contact[0].total_wrench.force.z
         r_0 = sqrt(pow(x_0,2)+pow(y_0,2))
-        x_err = gz_x
-        y_err = gz_y
-        r_err = sqrt(pow(x_err,2)+pow(y_err,2))
+        x_xrr = gz_x
+        y_xrr = gz_y
+        r_xrr = sqrt(pow(x_xrr,2)+pow(y_xrr,2))
         # print(current_time, start_time)
         t = (current_time-start_time).to_sec()
         f = contact[0].total_wrench.force.z
-        writer.writerow([int(aruco_x), int(aruco_y), int(x_0*100), int(y_0*100), int(r_0*100), int(x_err*100), int(y_err*100), int(r_err*100), t, int(f)])
+        writer.writerow([int(aruco_x), int(aruco_y), int(x_0*100), int(y_0*100), int(r_0*100), int(x_xrr*100), int(y_xrr*100), int(r_xrr*100), t, int(f)])
         csvfile.close() 
 
 
@@ -186,7 +187,7 @@ def pose_cb(data):
 
 
 def velocity_cb(data):
-    global vel_x, vel_y, vel_z, prev_time, prev_vel, max_acc
+    global vel_x, vel_y, vel_z, prev_time, prev_vel, max_acc, delta_time
 
     vel_x = data.twist.linear.x
     vel_y = data.twist.linear.y
@@ -261,7 +262,7 @@ def main():
     rate = rospy.Rate(hz)
 
     aruco_tracker       = ArucoSingleTracker(id_to_find=id_to_find, marker_size=marker_size, show_video=True, 
-                camera_distortion=camera_distortion, camera_matrix=camera_matrix)
+                camera_distortion=camera_distortion, camera_matrix=camera_matrix, simulation=False)
 
     tf_buff = tf2_ros.Buffer()
     tf_listener = tf2_ros.TransformListener(tf_buff)
@@ -300,6 +301,9 @@ def main():
 
     last_vel = 0
 
+    data_timer = 0.
+    hold_timer = 0.
+
     mavros.command.arming(True)
     if(cart_z < 1):
         # set_mode(0, 'GUIDED')
@@ -307,7 +311,7 @@ def main():
         # set_takeoff(0, 0, None, None, 10)
         set_mode(0, 'AUTO.TAKEOFF')
 
-    while cart_z < 23: continue
+    while cart_z < 9: continue
 
     #contact force subscriber
     # rospy.Subscriber('/bumper_states', ContactsState, contact_cb)
@@ -329,41 +333,6 @@ def main():
             home_z = cart_z
             home_z_recorded = True
 
-        # ready = select.select([sys.stdin], [], [], 0)[0]
-
-        # if ready:
-        #     x = ready[0].read(1)
-
-        #     if x == 'x':
-        #         limit_x = float(raw_input('Enter x limit:'))
-
-        #     if x == 'y':
-        #         limit_y = float(raw_input('Enter y limit:'))
-
-        #     if x == 'z':
-        #         limit_z = float(raw_input('Enter z limit:'))
-
-        #     if x == 'p':
-        #         kp = float(raw_input('Enter kp limit:'))
-
-        #     if x == 'b':
-        #         kb = float(raw_input('Enter kb limit:'))
-
-        #     if x == 's':
-        #         gps_rate = int(raw_input('0 - original, 1 - slow:'))
-
-        #     if x == 'n':
-        #         n = int(raw_input("Enter nsteps:"))
-
-        #     if x == 't':
-        #         t = float(raw_input("Enter timestep duration:"))
-
-        #     sys.stdin.flush()
-
-        # +90 To account for diff between world and drone frame
-        # desired_yaw = (math.atan2(desired_y - cart_y, desired_x - cart_x) * 180 / 3.1416)
-        # desired_yaw = 360.0 + desired_yaw if desired_yaw < 0 else desired_yaw
-
         aruco_cam_pos = tf2_geometry_msgs.PointStamped(header=Header(stamp=rospy.Time.now(), frame_id='base_link'))
         aruco_cam_pos.point.x = y_cm/100
         aruco_cam_pos.point.y = x_cm/100
@@ -382,9 +351,9 @@ def main():
             aruco_x = p.point.x
             aruco_y = p.point.y
             aruco_z = p.point.z
-            velocity_x_des, cached_var, diff = MPC_solver(aruco_x, 0, limit_x, 0, n, t, True, variables = cached_var, vel_limit = 1, acc=0, curr_vel=vel_x)
+            velocity_x_des, cached_var, diff = MPC_solver(aruco_x, 0, limit_x, 0, n, t, True, variables = cached_var, vel_limit = 0.1, acc=0.5, curr_vel=vel_x)
             x_array = cached_var.get("points")
-            velocity_y_des, cached_var, _ = MPC_solver(aruco_y, 0, limit_y, 0, n, t, True, variables = cached_var, vel_limit = 1, acc=0, curr_vel=vel_y)
+            velocity_y_des, cached_var, _ = MPC_solver(aruco_y, 0, limit_y, 0, n, t, True, variables = cached_var, vel_limit = 0.1, acc=0.5, curr_vel=vel_y)
             y_array = cached_var.get("points")
             velocity_z_des, cached_var, _ = MPC_solver(aruco_z, 0, limit_z, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc=0.2, curr_vel=vel_z, debug=True)
             z_array = cached_var.get("points")
@@ -398,27 +367,45 @@ def main():
             start_time = rospy.Time.now()
             print(start_time)
 
-            velocity_x_des = 1.5
+            velocity_x_des = -1.5
             velocity_y_des = 0
             velocity_z_des = 0
         # print(p)
         
-        else:
-            velocity_x_des, cached_var, diff = MPC_solver(cart_x, aruco_x, limit_x, 0, n, t, True, variables = cached_var, vel_limit = 100, acc=1, curr_vel=vel_x)
-            x_array = cached_var.get("points")
-            velocity_y_des, cached_var, _ = MPC_solver(cart_y, aruco_y, limit_y, 0, n, t, True, variables = cached_var, vel_limit = 100, acc=1, curr_vel=vel_y)
-            y_array = cached_var.get("points")
-            velocity_z_des, cached_var, _ = MPC_solver(cart_z, aruco_z, limit_z, 0, n, t, True, variables = cached_var, vel_limit = 100, acc=1.5, curr_vel=vel_z)
-            z_array = cached_var.get("points")
-            # print("Marker unseen\t",aruco_x, velocity_x_des)
+        # else:
+        #     velocity_x_des, cached_var, diff = MPC_solver(cart_x, aruco_x, limit_x, 0, n, t, True, variables = cached_var, vel_limit = 100, acc=1, curr_vel=vel_x)
+        #     x_array = cached_var.get("points")
+        #     velocity_y_des, cached_var, _ = MPC_solver(cart_y, aruco_y, limit_y, 0, n, t, True, variables = cached_var, vel_limit = 100, acc=1, curr_vel=vel_y)
+        #     y_array = cached_var.get("points")
+        #     velocity_z_des, cached_var, _ = MPC_solver(cart_z, aruco_z, limit_z, 0, n, t, True, variables = cached_var, vel_limit = 100, acc=1.5, curr_vel=vel_z)
+        #     z_array = cached_var.get("points")
+        #     # print("Marker unseen\t",aruco_x, velocity_x_des)
 
-            mpc_point_arr = np.transpose(np.row_stack((x_array, y_array, z_array)))
+        #     mpc_point_arr = np.transpose(np.row_stack((x_array, y_array, z_array)))
+
+        data_timer = data_timer + delta_time
+
+        if(data_timer > 0.1):
+            writer.writerow([rospy.get_time(), float(cart_x), float(cart_y), float(cart_z), float(vel_x), float(vel_y), float(vel_z), float(velocity_x_des), float(velocity_y_des), float(velocity_z_des)])
+            data_timer = 0.
+
+        dist = sqrt((aruco_x)**2+(aruco_y)**2)#+(aruco_u)**2)
+
+        if(dist < 0.25 and marker_found == True and cart_z < 2):
+            hold_timer = hold_timer + delta_time
+
+            velocity_x_des = velocity_y_des = 0
+
+            print("Time to land:\t", hold_timer)
+            # if(hold_timer > 3):
+            set_mode('AUTO.LAND')
+            csvfile.close()
+
+            sys.exit()
         
         print(velocity_z_des, vel_z, aruco_z)
-        print("Aruco X:\t", aruco_x, "Aruco Y:\t", aruco_y)
-        # velocity_x_des = clamp(velocity_x_des, 1.5)
-        # velocity_y_des = clamp(velocity_y_des, 1.5)
-        # velocity_z_des = clamp(velocity_z_des, 1.5)
+        # print("Aruco X:\t", aruco_x, "Aruco Y:\t", aruco_y, "Aruco Z:\t", aruco_z)
+        # print("")
 
         pub1.publish(twist_obj(velocity_x_des, velocity_y_des, velocity_z_des, 0.0, 0.0, 0.0))
         # pub1.publish(twist_obj(velocity_x_des, 0, 0, 0.0, 0.0, 0.0))
@@ -427,15 +414,6 @@ def main():
             max_acc = abs(acc)
             print("MPC Max:",max_acc)
 
-        if(cart_z < 15):
-            # set_landing(0, 0, None, None, 0)
-
-            set_mode(0, 'AUTO.LAND')
-            # set_mode(0, 'LAND')
-
-            # print(time.time() - start_time)
-            if(not armed):
-                sys.exit()
 
         if(detected_aruco):
             desired_point = PointStamped(header=Header(stamp=rospy.get_rostime()))
