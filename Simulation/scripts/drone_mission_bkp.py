@@ -1,8 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Code to control drone
 # running this code should cause drone to take commands from GCS and act accordingly
-# Usage - python drone_mission.py --dr_no=$drone_id_number
+# Usage - python drone_mission.py
 
 
 from os import sys, path
@@ -19,6 +19,8 @@ import rospy, mavros
 from mavros import command
 
 from std_msgs.msg import String, Int16
+#from mavros_msgs.msg import State
+#from mavros_msgs.srv import CommandBool, CommandTOL, SetMode
 
 from mavros_msgs.msg import *
 from mavros_msgs.srv import *
@@ -99,23 +101,47 @@ def control_mission_cb(data, args):
 	cur_wp = data.current_seq
 	set_cmd = args[0]
 	set_cur_waypoint = args[1]
-	WP = args[2]
 
-	#W[last]==W[first] (Required to keep mission continued)
-	if cur_wp==(len(WP)+1):
-		set_cur_waypoint(wp_seq=1)
-		cur_wp = 1
-
-	#command = 115 (for setting yaw) ; param1 = yaw angle (deg) ; param2 = yaw speed (deg/s) ; param4 = 0 (global frame)
-	set_cmd(command=115, param1=WP[cur_wp-1][2], param2=45, param4=0)
-	
 	#command = 178 (for setting ground speed) ; param2 = speed (m/s)
 	if cur_wp!=0:
-		set_cmd(command=178, param2=2)
+		set_cmd(command=178, param2=0.5)
+
+	#command = 115 (for setting yaw) ; param1 = yaw angle (deg) ; param2 = yaw speed (deg/s) ; param4 = 0 (global frame)
+	if cur_wp==2:
+		set_cmd(command=115, param1=0, param2=45, param4=0)		# W[1] to W[2] (Refer to below diageam) (param1=0 -> Facing North)
+	if cur_wp==3:
+		set_cmd(command=115, param1=90, param2=45, param4=0)	# W[2] to W[3] (Refer to below diageam) (param1=90 -> Facing East)
+	if cur_wp==4:
+		set_cmd(command=115, param1=180, param2=45, param4=0)	# W[3] to W[4] (Refer to below diageam) (param1=180 -> Facing South)
+	if cur_wp==5:
+		set_cur_waypoint(wp_seq=1)								# W[5]==W[1] (Refer to below diageam) (Required to keep mission continued)
+	if cur_wp==1:
+		set_cmd(command=115, param1=270, param2=45, param4=0)	# W[4] to W[5]/W[1] (Refer to below diageam) (param1=270 -> Facing West)
 
 
 #Function called by normal_mission()
-def waypoint_dataset(dLat,dLon,WP_number,toh):
+def waypoint_dataset(dLat,dLon,toh):
+
+########################################################################################################
+#
+#	    W[1]								W[2]
+#	W[5]*____________________________________*		    	
+#		|				   {				 |			  North (+ x_lat)
+#		|				   {				 |				^
+#		|				   { x_lat			 |				|
+#		|				   { 	    		 |				|
+#		|		y_long	   {				 |				|
+#		|<---------------->* W[0]			 |				|----------> East (+ y_long)
+#		|				 home				 |
+#		|									 |
+#		|									 |
+#		|									 |
+#		*____________________________________*
+#	W[4]									W[3]
+#
+# This function is used to set the waypoint array (W[]) according to the diagram. Function returns W[]
+########################################################################################################
+
 	global gcs_cmd_home_lat, gcs_cmd_home_lon
 
 	W = []
@@ -129,38 +155,79 @@ def waypoint_dataset(dLat,dLon,WP_number,toh):
 	wp.param2 = 0					#Accept Radius
 	wp.param3 = 0					#Pass Radius
 	wp.param4 = 0					#Yaw
-	wp.x_lat = gcs_cmd_home_lat		#Latitude
-	wp.y_long = gcs_cmd_home_lon	#Longitude
+	wp.x_lat = gcs_cmd_home_lat				#Latitude
+	wp.y_long = gcs_cmd_home_lon			#Longitude
 	wp.z_alt = toh					#altitude
-	W.append(wp)
-
-	for i in range(WP_number):	
-		wp = Waypoint()
-		wp.frame = 3			#FRAME_GLOBAL_REL_ALT
-		wp.command = 16  		#Navigate to waypoint.
-		wp.is_current = False
-		wp.autocontinue = True
-		wp.param1 = 0  								#delay (must correspond to param2 in control_mission_cb())
-		wp.param2 = 0								#Accept Radius
-		wp.param3 = 0								#Pass Radius
-		wp.param4 = 0								#Yaw
-		wp.x_lat = gcs_cmd_home_lat + dLat[i]		#Latitude
-		wp.y_long = gcs_cmd_home_lon + dLon[i]		#Longitude
-		wp.z_alt = toh								#altitude
-		W.append(wp)
+	W.append(wp)	
 
 	wp = Waypoint()
 	wp.frame = 3			#FRAME_GLOBAL_REL_ALT
 	wp.command = 16  		#Navigate to waypoint.
 	wp.is_current = False
 	wp.autocontinue = True
-	wp.param1 = 0  								#delay
-	wp.param2 = 0								#Accept Radius
-	wp.param3 = 0								#Pass Radius
-	wp.param4 = 0								#Yaw
-	wp.x_lat = gcs_cmd_home_lat + dLat[0]		#Latitude
-	wp.y_long = gcs_cmd_home_lon + dLon[0]		#Longitude
-	wp.z_alt = toh								#altitude
+	wp.param1 = 0  					#delay (must correspond to param2 in control_mission_cb())
+	wp.param2 = 0					#Accept Radius
+	wp.param3 = 0					#Pass Radius
+	wp.param4 = 0					#Yaw
+	wp.x_lat = gcs_cmd_home_lat + dLat		#Latitude
+	wp.y_long = gcs_cmd_home_lon - dLon		#Longitude
+	wp.z_alt = toh					#altitude
+	W.append(wp)
+
+	wp = Waypoint()
+	wp.frame = 3			#FRAME_GLOBAL_REL_ALT
+	wp.command = 16  		#Navigate to waypoint.
+	wp.is_current = False
+	wp.autocontinue = True
+	wp.param1 = 0  					#delay (must correspond to param2 in control_mission_cb())
+	wp.param2 = 0					#Accept Radius
+	wp.param3 = 0					#Pass Radius
+	wp.param4 = 0					#Yaw
+	wp.x_lat = gcs_cmd_home_lat + dLat		#Latitude
+	wp.y_long = gcs_cmd_home_lon + dLon		#Longitude
+	wp.z_alt = toh					#altitude
+	W.append(wp)
+	
+	wp = Waypoint()
+	wp.frame = 3			#FRAME_GLOBAL_REL_ALT
+	wp.command = 16  		#Navigate to waypoint.
+	wp.is_current = False
+	wp.autocontinue = True
+	wp.param1 = 0  					#delay (must correspond to param2 in control_mission_cb())
+	wp.param2 = 0					#Accept Radius
+	wp.param3 = 0					#Pass Radius
+	wp.param4 = 0					#Yaw
+	wp.x_lat = gcs_cmd_home_lat - dLat		#Latitude
+	wp.y_long = gcs_cmd_home_lon + dLon		#Longitude
+	wp.z_alt = toh					#altitude
+	W.append(wp)
+
+	wp = Waypoint()
+	wp.frame = 3			#FRAME_GLOBAL_REL_ALT
+	wp.command = 16  		#Navigate to waypoint.
+	wp.is_current = False
+	wp.autocontinue = True
+	wp.param1 = 0					#delay (must correspond to param2 in control_mission_cb())
+	wp.param2 = 0					#Accept Radius
+	wp.param3 = 0					#Pass Radius
+	wp.param4 = 0					#Yaw
+	wp.x_lat = gcs_cmd_home_lat - dLat		#Latitude
+	wp.y_long = gcs_cmd_home_lon - dLon		#Longitude
+	wp.z_alt = toh					#altitude
+	W.append(wp)
+
+	wp = Waypoint()
+	wp.frame = 3			#FRAME_GLOBAL_REL_ALT
+	wp.command = 16  		#Navigate to waypoint.
+	wp.is_current = False
+	wp.autocontinue = True
+	wp.param1 = 0  					#delay
+	wp.param2 = 0					#Accept Radius
+	wp.param3 = 0					#Pass Radius
+	wp.param4 = 0					#Yaw
+	wp.x_lat = gcs_cmd_home_lat + dLat		#Latitude
+	wp.y_long = gcs_cmd_home_lon - dLon		#Longitude
+	wp.z_alt = toh					#altitude
 	W.append(wp)
 	
 	return(W)
@@ -177,11 +244,11 @@ def dis_to_gps(x_meters,y_meters):
 	dLat = dLat * 180/math.pi
 	dLon = dLon * 180/math.pi
 
-	return dLat, dLon
+	return (dLat, dLon)
 
 
 #Function called by drone_sub()
-def go_to_location(drone_ID,set_mode,set_takeoff,set_land,toh,WP,safe):
+def go_to_location(drone_ID,set_mode,set_takeoff,set_land,toh,x_meters,y_meters,safe):
 	global bat, armed, cur_x, cur_y, cur_alt, cur_yaw, gcs_cmd_x_diff, gcs_cmd_y_diff, gcs_cmd_x, gcs_cmd_y, gcs_cmd_height, gcs_cmd_yaw
 
 	#setting up mavros services
@@ -200,13 +267,14 @@ def go_to_location(drone_ID,set_mode,set_takeoff,set_land,toh,WP,safe):
 	if math.isnan(gcs_cmd_y_diff):
 		gcs_cmd_y_diff = 0
 	if math.isnan(gcs_cmd_x):
-		gcs_cmd_x = 0
+		gcs_cmd_x = -x_meters
 	if math.isnan(gcs_cmd_y):
-		gcs_cmd_y = 0
+		gcs_cmd_y = y_meters
 	if math.isnan(gcs_cmd_height):
 		gcs_cmd_height = toh
 	if math.isnan(gcs_cmd_yaw):
 		gcs_cmd_yaw = cur_yaw
+	
 	
 	#Publisher function to go to the desired initial location
 	pos_pub = rospy.Publisher(drone_ID+'/mavros/setpoint_position/local', PoseStamped, queue_size=10)
@@ -216,6 +284,22 @@ def go_to_location(drone_ID,set_mode,set_takeoff,set_land,toh,WP,safe):
 	init_pos.pose.position.y = gcs_cmd_y + gcs_cmd_y_diff
 	init_pos.pose.position.z = gcs_cmd_height
 	[init_pos.pose.orientation.x, init_pos.pose.orientation.y, init_pos.pose.orientation.z, init_pos.pose.orientation.w] = quaternion_from_euler(0,0,gcs_cmd_yaw)
+	
+	'''
+	pos_pub = rospy.Publisher(drone_ID+'/mavros/setpoint_raw/local', PositionTarget, queue_size=10)
+	init_pos = PositionTarget()
+	init_pos.header.stamp = rospy.Time.now()
+	init_pos.coordinate_frame = 1
+	init_pos.type_mask = 0b001111000000
+	init_pos.position.x = gcs_cmd_x + gcs_cmd_x_diff
+	init_pos.position.y = gcs_cmd_y + gcs_cmd_y_diff
+	init_pos.position.z = gcs_cmd_height
+	init_pos.velocity.x = 0.5
+	init_pos.velocity.y = 0.5
+	init_pos.velocity.z = 0.3
+	init_pos.yaw = gcs_cmd_yaw
+	init_pos.yaw_rate = 20
+	'''
 
 	if not armed:
 
@@ -252,28 +336,27 @@ def go_to_location(drone_ID,set_mode,set_takeoff,set_land,toh,WP,safe):
 		
 
 #Function called by drone_sub()
-def normal_mission(drone_ID,waypoints_clean,set_waypoint,set_cur_waypoint,set_cmd,set_mode,WP,toh,low,critical):
+def normal_mission(drone_ID,waypoints_clean,set_waypoint,set_cur_waypoint,set_cmd,set_mode,x_meters,y_meters,toh,low,critical):
 	global bat, armed, gcs_cmd_wp, cut_alt
 
-	dLat, dLon = [None]*len(WP), [None]*len(WP)
-
 	#Function to convert distance (in meters) to latitude and longitude
-	for i in range(len(WP)):
-		dLat[i], dLon[i] = dis_to_gps(WP[i][0],WP[i][1])
+	dLat, dLon = dis_to_gps(x_meters,y_meters)
 
 	waypoints_clean.call()
 
-	#Create waypoints
-	W = waypoint_dataset(dLat,dLon,len(WP),toh)
+	#Create waypoints for function by calling waypoint_dataset() [defined above]
+	W = waypoint_dataset(dLat,dLon,toh)
 
 	#Uploading waypoints and mission
 	set_waypoint(start_index=0, waypoints=W)
 
 	#Subscriber function to control mission parameters
-	rospy.Subscriber(drone_ID+'/mavros/mission/waypoints', WaypointList, control_mission_cb, (set_cmd,set_cur_waypoint,WP))
+	rospy.Subscriber(drone_ID+'/mavros/mission/waypoints', WaypointList, control_mission_cb, (set_cmd,set_cur_waypoint))
 
 	#set current waypoint to gcs_cmd_waypoint
 	set_cur_waypoint(wp_seq=gcs_cmd_wp)
+
+	#time.sleep(1)
 
 	#For doing mission
 	if armed and cur_alt>=0.95*toh:
@@ -290,6 +373,7 @@ def hower_and_wait(drone_ID,set_mode):
 	global armed, cur_alt, gcs_cmd_x_diff, gcs_cmd_y_diff, gcs_cmd_x, gcs_cmd_y, gcs_cmd_height, gcs_cmd_yaw
 	
 	set_mode(custom_mode='GUIDED')
+
 	
 	#Publisher to increase drone's altitude
 	alt_pub = rospy.Publisher(drone_ID+'/mavros/setpoint_position/local', PoseStamped, queue_size=10)
@@ -300,6 +384,22 @@ def hower_and_wait(drone_ID,set_mode):
 	inc_alt.pose.position.z = gcs_cmd_height
 	[inc_alt.pose.orientation.x, inc_alt.pose.orientation.y, inc_alt.pose.orientation.z, inc_alt.pose.orientation.w] = quaternion_from_euler(0,0,gcs_cmd_yaw)
 	
+	'''
+	pos_pub = rospy.Publisher(drone_ID+'/mavros/setpoint_raw/local', PositionTarget, queue_size=10)
+	init_pos = PositionTarget()
+	init_pos.header.stamp = rospy.Time.now()
+	init_pos.coordinate_frame = 1
+	init_pos.type_mask = 0b001111000000
+	init_pos.position.x = gcs_cmd_x + gcs_cmd_x_diff
+	init_pos.position.y = gcs_cmd_y + gcs_cmd_y_diff
+	init_pos.position.z = gcs_cmd_height
+	init_pos.velocity.x = 0.5
+	init_pos.velocity.y = 0.5
+	init_pos.velocity.z = 0.3
+	init_pos.yaw = gcs_cmd_yaw
+	init_pos.yaw_rate = 20
+	'''
+
 	#Increase altitude and hover
 	if armed:
 		alt_pub.publish(inc_alt)
@@ -326,6 +426,22 @@ def go_to_home(drone_ID,set_mode,set_land,toh):
 	land_pos.pose.position.y = 0 + gcs_cmd_y_diff
 	land_pos.pose.position.z = toh
 	[land_pos.pose.orientation.x, land_pos.pose.orientation.y, land_pos.pose.orientation.z, land_pos.pose.orientation.w] = quaternion_from_euler(0,0,cur_yaw)
+	
+	'''
+	pos_pub = rospy.Publisher(drone_ID+'/mavros/setpoint_raw/local', PositionTarget, queue_size=10)
+	init_pos = PositionTarget()
+	init_pos.header.stamp = rospy.Time.now()
+	init_pos.coordinate_frame = 1
+	init_pos.type_mask = 0b001111000000
+	init_pos.position.x = 0 + gcs_cmd_x_diff
+	init_pos.position.y = 0 + gcs_cmd_y_diff
+	init_pos.position.z = toh
+	init_pos.velocity.x = 0.5
+	init_pos.velocity.y = 0.5
+	init_pos.velocity.z = 1
+	init_pos.yaw = cur_yaw
+	init_pos.yaw_rate = 20
+	'''
 
 	if armed:
 
@@ -348,7 +464,7 @@ def go_to_home(drone_ID,set_mode,set_land,toh):
 
 
 #Function to subscribe to the GCS command and take action accordingly (runs on sepatate thread)
-def drone_sub(drone_ID,toh,WP,safe,low,critical):
+def drone_sub(drone_ID,toh,x_meters,y_meters,safe,low,critical):
 	global status, gcs_cmd_str, armed, cur_alt
 
 	# Definitions for rospy services
@@ -374,13 +490,13 @@ def drone_sub(drone_ID,toh,WP,safe,low,critical):
 		if gcs_cmd_str == drone_ID + ' takeoff': 			#GCS takeoff and go to position command for drone			
 			print(drone_ID + ' copy takeoff')
 			pub_status.publish(drone_ID + ' takeoff')
-			go_to_location(drone_ID,set_mode,set_takeoff,set_land,toh,WP,safe)
+			go_to_location(drone_ID,set_mode,set_takeoff,set_land,toh,x_meters,y_meters,safe)
 			pub_status.publish(drone_ID + ' at location')
 
 		if gcs_cmd_str == drone_ID + ' do mission':			#GCS normal mission command for drone
 			print(drone_ID + ' copy doing mission')
 			pub_status.publish(drone_ID + ' doing mission')
-			normal_mission(drone_ID,waypoints_clean,set_waypoint,set_cur_waypoint,set_cmd,set_mode,WP,toh,low,critical)
+			normal_mission(drone_ID,waypoints_clean,set_waypoint,set_cur_waypoint,set_cmd,set_mode,x_meters,y_meters,toh,low,critical)
 			pub_status.publish(drone_ID + ' need replacement')
 		
 		if gcs_cmd_str == drone_ID + ' replacement ready':			#GCS command for drone to suggest that another drone is available for replacement
@@ -419,7 +535,7 @@ def drone_bat(drone_ID):
 		
 		if armed:
 			if bat>0:
-				bat = bat - 0
+				bat = bat - 5
 				time.sleep(7)
 			else:
 				bat = 0
@@ -438,36 +554,12 @@ def drone_bat(drone_ID):
 
 if __name__ == '__main__':
 
-########################################################################################################
-#
-#	    W[1]								W[2]
-#	W[5]*____________________________________*		    	
-#		|				   {				 |			  North (+ x_lat)
-#		|				   {				 |				^
-#		|				   { x_lat			 |				|
-#		|				   { 	    		 |				|
-#		|		y_long	   {				 |				|
-#		|<---------------->* W[0]			 |				|----------> East (+ y_long)
-#		|				 home				 |
-#		|									 |
-#		|									 |
-#		|									 |
-#		*____________________________________*
-#	W[4]									W[3]
-#
-########################################################################################################
-
 	#parser so that arguments can be ammended during run time
 	parser = argparse.ArgumentParser(description='params')
 	parser.add_argument('--dr_no', default=0, type=int)
-	parser.add_argument('--toh', default=5, type=int)					#Desired Takeoff height for mission
-
-	#Mission waypoints in (x,y,heading_angle)
-	parser.add_argument('--waypoints', default=((5,-5,270),				#Coordinate for W[1]/W[5] and heading angle while going to W[1]/W[5]
-												(5,5,0),				#Coordinate for W[2] and heading angle while going to W[2]
-												(-5,5,90),				#Coordinate for W[3] and heading angle while going to W[3]
-												(-5,-5,180)))			#Coordinate for W[4] and heading angle while going to W[4]		
-
+	parser.add_argument('--toh', default=3, type=int)					#Desired Takeoff height for mission
+	parser.add_argument('--surveillance_dis_x', default=5, type=int)	#Distance to cover from home location, in both North and South direction (in meters)
+	parser.add_argument('--surveillance_dis_y', default=5, type=int)	#Distance to cover from home location, in both East and West direction (in meters)
 	parser.add_argument('--safe_bat',default=90, type=int)				#Minimum safe battery level to authorize takeoff (percentage)
 	parser.add_argument('--low_bat', default=70, type=int)				#Low battery level (percentage)
 	parser.add_argument('--critical_bat', default=50, type=int)			#Critical battery level (percentage)
@@ -501,22 +593,23 @@ if __name__ == '__main__':
 		exit()
 
 	drone_num = args.dr_no					
-	toh = args.toh							
-	WP = args.waypoints		
+	toh = args.toh								
+	x_meters = args.surveillance_dis_x		
+	y_meters = args.surveillance_dis_y		
 	safe = args.safe_bat						
 	low = args.low_bat 							
 	critical = args.critical_bat				
 
 	#setting minimum takeoff height (min_toh = 8 meters) for safety
-	if toh<5:
-		toh=5
+	#if toh<8:
+		#toh=8
 
 	rospy.init_node('drone_'+str(drone_num))
 
 	#ID of drone (Ex. drone1 , drone2 , drone3 ...) 
 	drone_ID = 'drone' + str(drone_num)
 
-	thread1 = threading.Thread(target=drone_sub,args=(drone_ID,toh,WP,safe,low,critical)) 
+	thread1 = threading.Thread(target=drone_sub,args=(drone_ID,toh,x_meters,y_meters,safe,low,critical)) 
 	thread2 = threading.Thread(target=drone_bat,args=(drone_ID,))
 
 	thread1.start()
