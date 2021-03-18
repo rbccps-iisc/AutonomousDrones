@@ -12,7 +12,7 @@ prev_interval = 0
 big_I = big_0= big_A_eq= dyn_A= dyn_b= term_A= term_b= pos_constraint= vel_constraint = np.empty(2)
 big_H= big_h= big_A_eq= big_Ba_ineq = np.empty(2)
 
-def MPC_solver(actual=0., desired=0., pos_limit=1000, origin=0, nsteps=10.,interval=0.1, ret_points = False, vel_limit = 10000, variables = None, acc = 1.5, curr_vel = 0, debug = False):
+def MPC_solver(actual=0., desired=0., pos_limit=1000, origin=0, nsteps=10.,interval=0.1, ret_points = False, vel_limit = 10000, variables = None, acc = 1.5, curr_vel = 0, debug = False, pos_cost = 1, vel_cost = 1):
 	"""MPC which uses Quadratic Programming solver
 	
 	Keyword Arguments:
@@ -36,12 +36,11 @@ def MPC_solver(actual=0., desired=0., pos_limit=1000, origin=0, nsteps=10.,inter
 		prev_nsteps = variables.get("prev_nsteps")
 		prev_interval = variables.get("prev_interval")
 
-
 	timer = time.time()
 
 	if nsteps != prev_nsteps:
 		# big_I = np.eye(2*nsteps)
-		big_I = block_diag(np.eye(nsteps)*1,np.eye(nsteps)*1)			
+		big_I = block_diag(np.eye(nsteps)*pos_cost,np.eye(nsteps)*vel_cost)			
 		big_0 = np.zeros(2*nsteps)
 	
 	#Get dynamic & terminal constraints
@@ -146,12 +145,13 @@ def MPC_solver(actual=0., desired=0., pos_limit=1000, origin=0, nsteps=10.,inter
 	# print((big_Bb_ineq))
 	# print((big_A_eq))
 	# print((big_b_eq))
-	# print(np.shape(big_H))
-	# print(np.shape(big_h))
-	# print(np.shape(big_Ba_ineq))
-	# print(np.shape(big_Bb_ineq))
-	# print(np.shape(big_A_eq))
-	# print(np.shape(big_b_eq))
+	if(debug):
+		print(np.shape(big_H))
+		print(np.shape(big_h))
+		print(np.shape(big_Ba_ineq))
+		print(np.shape(big_Bb_ineq))
+		print(np.shape(big_A_eq))
+		print(np.shape(big_b_eq))
 	
 	#Calculate solution
 	try:
@@ -160,15 +160,15 @@ def MPC_solver(actual=0., desired=0., pos_limit=1000, origin=0, nsteps=10.,inter
 		raise e
 		pass
 	
-	if (nsteps != prev_nsteps or interval != prev_interval or u_in):
-		if ret_points == True:
-			variables = {"big_A_eq": big_A_eq, "big_Ba_ineq": big_Ba_ineq, "big_H": big_H, "big_h": big_h, "prev_nsteps": prev_nsteps, "prev_interval": prev_interval, "points": u_in[1:nsteps+1]}
+	# if (nsteps != prev_nsteps or interval != prev_interval or u_in):
+	if ret_points == True:
+		variables = {"big_A_eq": big_A_eq, "big_Ba_ineq": big_Ba_ineq, "big_H": big_H, "big_h": big_h, "prev_nsteps": nsteps, "prev_interval": interval, "points": u_in[1:nsteps+1]}
 
-		else:
-			variables = {"big_A_eq": big_A_eq, "big_Ba_ineq": big_Ba_ineq, "big_H": big_H, "big_h": big_h, "prev_nsteps": prev_nsteps, "prev_interval": prev_interval}
+	else:
+		variables = {"big_A_eq": big_A_eq, "big_Ba_ineq": big_Ba_ineq, "big_H": big_H, "big_h": big_h, "prev_nsteps": nsteps, "prev_interval": interval}
 
-		prev_nsteps = nsteps
-		prev_interval = interval
+		# prev_nsteps = nsteps
+		# prev_interval = interval
 
 	if __name__ == "__main__" or debug == True:
 		print(u_in[1:nsteps+1])

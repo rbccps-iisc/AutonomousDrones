@@ -1,2 +1,2 @@
-Time,cart_e,cart_n,cart_u,vel_e,vel_n,vel_u,desired_e,desired_n,desired_u
+Time,cart_x,cart_y,cart_z,vel_x,vel_y,vel_z,desired_x,desired_y,desired_z
 0,0,0,0,0,0,0,0,0,0

@@ -60,6 +60,8 @@ quat.x = quat.y = quat.z = quat.w       = 0
 start_y                                 = 0.0
 start_time                              = rospy.Time()
 cached_var                              = {}
+cached_var_y                            = {}
+cached_var_z                            = {}
 flag                                    = True
 max_acc                                 = 0
 detected_aruco                          = False
@@ -155,9 +157,9 @@ def imu_cb(data):
 
     br.sendTransform((0, 0, 0), (-orientation_q.x, -orientation_q.y, -orientation_q.z, orientation_q.w), rospy.Time.now(), "base_link_att_comp", "base_link")
 
-    if(abs(acc) > max_acc):
-        max_acc = abs(acc)
-        print("Measured max:\t",acc)
+    # if(abs(acc) > max_acc):
+    #     max_acc = abs(acc)
+    #     print("Measured max:\t",acc)
 
 
 def gps_local_cb(data):
@@ -165,7 +167,7 @@ def gps_local_cb(data):
 
     cart_x = data.pose.pose.position.x
     cart_y = data.pose.pose.position.y
-    # cart_z = data.pose.pose.position.z
+    cart_z = data.pose.pose.position.z
 
     if home_xy_recorded is False and cart_x != 0 and cart_y != 0:
         home_x = cart_x
@@ -265,7 +267,7 @@ def range_cb(data):
 
 def main():
     global home_xy_recorded, home_z_recorded, cart_x, cart_y, cart_z, desired_x, desired_y, desired_z, home_yaw, aruco_x, aruco_y, aruco_z, armed
-    global home_x, home_z, home_y, limit_x, limit_y, limit_z, cont, n, t, start_time, cached_var, detected_aruco, time_taken, coord
+    global home_x, home_z, home_y, limit_x, limit_y, limit_z, cont, n, t, start_time, cached_var, cached_var_y, cached_var_z, detected_aruco, time_taken, coord
     global vision_avg, full_avg
     xAnt = yAnt = 0
     acc = 0
@@ -275,8 +277,7 @@ def main():
     
     rate = rospy.Rate(hz)
 
-    #aruco_tracker       = ArucoSingleTracker(id_to_find=id_to_find, marker_size=marker_size, show_video=False, 
-    #            camera_distortion=camera_distortion, camera_matrix=camera_matrix, simulation=False, record_video=False)
+    # aruco_tracker       = ArucoSingleTracker(id_to_find=id_to_find, marker_size=marker_size, show_video=False, camera_distortion=camera_distortion, camera_matrix=camera_matrix, simulation=True, record_video=False)
 
     tf_buff = tf2_ros.Buffer()
     tf_listener = tf2_ros.TransformListener(tf_buff)
@@ -290,7 +291,7 @@ def main():
     rospy.Subscriber("/mavros/local_position/velocity_local", TwistStamped, velocity_cb)
     rospy.Subscriber("/mavros/state", State, armed_cb)
     rospy.Subscriber("/aruco_coord", Vector3, aruco_coord_cb)
-    rospy.Subscriber("/mavros/distance_sensor/lidarlite_pub", Range, range_cb)
+    # rospy.Subscriber("/mavros/distance_sensor/lidarlite_pub", Range, range_cb)
 
     #time subscriber
     rospy.Subscriber('clock', Clock, clock_cb)
@@ -323,13 +324,14 @@ def main():
     
     #set_mode(0, 'OFFBOARD')
     
+    print(cart_z)
     if(cart_z < 1):
         # set_mode(0, 'GUIDED')
 
         # set_takeoff(0, 0, None, None, 10)
         set_mode(0, 'AUTO.TAKEOFF')
 
-    while cart_z < 4.8: continue
+    while cart_z < 9: continue
 
     #contact force subscriber
     # rospy.Subscriber('/bumper_states', ContactsState, contact_cb)
@@ -387,10 +389,12 @@ def main():
             aruco_z = p.point.z
             velocity_x_des, cached_var, diff = MPC_solver(aruco_x, 0, limit_x, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc=2, curr_vel=vel_x)
             x_array = cached_var.get("points")
-            velocity_y_des, cached_var, _ = MPC_solver(aruco_y, 0, limit_y, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc=2, curr_vel=vel_y)
-            y_array = cached_var.get("points")
-            velocity_z_des, cached_var, _ = MPC_solver(aruco_z, 0, limit_z, 0, n, t, True, variables = cached_var, vel_limit = 0.2, acc=0, curr_vel=vel_z, debug=False)
-            z_array = cached_var.get("points")
+            velocity_y_des, cached_var_y, _ = MPC_solver(aruco_y, 0, limit_y, 0, n, t, True, variables = cached_var_y, vel_limit = 0.5, acc=2, curr_vel=vel_y)
+            y_array = cached_var_y.get("points")
+            velocity_z_des, cached_var_z, _ = MPC_solver(aruco_z, 0, limit_z, 0, n, t, True, variables = cached_var_z, vel_limit = 0.8, acc=0, curr_vel=0, pos_cost=0.1, vel_cost=100, debug=False)
+            z_array = cached_var_z.get("points")
+            
+            print(cached_var_z.get("big_H"))
             mpc_point_arr = np.transpose(np.row_stack((x_array, y_array, z_array)))
 
             acc = diff / t
@@ -401,8 +405,8 @@ def main():
             start_time = rospy.Time.now()
             print("----------------------------NOT SEEN------------------------------------")
 
-            velocity_x_des = 0.5
-            velocity_y_des = 0.5
+            velocity_x_des = -0.5
+            velocity_y_des = 0
             velocity_z_des = 0
         # print(p)
         
