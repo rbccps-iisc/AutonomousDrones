@@ -95,10 +95,10 @@ class ArucoSingleTracker():
         self._parameters  = aruco.DetectorParameters_create()
 
         #--- Capture the videocamera (this may also be a video or a picture)
-        self._cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
+        # self._cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
         #-- Set the camera size as the one it was calibrated with
-        self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, camera_size[0])
-        self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_size[1])
+        # self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, camera_size[0])
+        # self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_size[1])
 
         #-- Font for the text in the image
         self.font = cv2.FONT_HERSHEY_PLAIN
@@ -161,7 +161,7 @@ class ArucoSingleTracker():
         
         marker_found = False
         x = y = z = 0
-        #rate = rospy.Rate(30)
+        rate = rospy.Rate(30)
 
         pub_coord = rospy.Publisher('aruco_coord', Vector3, queue_size=1)
         coord = Vector3()
@@ -267,19 +267,20 @@ class ArucoSingleTracker():
                 coord.z = z
                 pub_coord.publish(coord)
 
+            rate.sleep()
             if not loop: return(marker_found, x, y, z, corners)
             
 if __name__ == "__main__":
 
     #--- Define Tag
     id_to_find  = 72
-    marker_size  = 20 #- [cm]
+    marker_size  = 40 #- [cm]
 
     #--- Get the camera calibration path
     calib_path  = "./"
     camera_matrix   = np.loadtxt(calib_path+'cameraMatrix.txt', delimiter=',')
     camera_distortion   = np.loadtxt(calib_path+'cameraDistortion.txt', delimiter=',')                                      
-    aruco_tracker = ArucoSingleTracker(id_to_find=id_to_find, marker_size=marker_size, show_video=True, camera_matrix=camera_matrix, camera_distortion=camera_distortion, record_video=False)
+    aruco_tracker = ArucoSingleTracker(id_to_find=id_to_find, marker_size=marker_size, show_video=False, camera_matrix=camera_matrix, camera_distortion=camera_distortion, record_video=False, simulation=False)
     
     aruco_tracker.track(loop = True)
 
