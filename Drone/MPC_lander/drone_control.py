@@ -18,6 +18,7 @@ from mavros_msgs.msg import PositionTarget, Altitude, State
 from mavros_msgs.srv import CommandBool, CommandTOL, SetMode
 
 from nav_msgs.msg import Path, Odometry
+from geographic_msgs.msg import GeoPoseStamped
 from visualization_msgs.msg import Marker
 from math import pow, sqrt
 
@@ -70,7 +71,7 @@ prev_vel                                = 0
 prev_time                               = rospy.Time()
 time_taken                              = 0
 start_clock                             = False
-contact_made                            = False
+is_reached                              = False
 init_pose                               = False
 gz_x = gz_y = gz_z = x_0 = y_0          = 0
 full_avg                                = 0.
@@ -265,8 +266,21 @@ def range_cb(data):
     cart_z = data.range
 
 
+def geo_pose_obj(x, y, z, a, b, c, d):
+    # move_cmd = Twist()
+    pose_cmd = GeoPoseStamped(header=Header(stamp=rospy.get_rostime()))
+    pose_cmd.pose.position.latitude = x
+    pose_cmd.pose.position.longitude = y
+    pose_cmd.pose.position.altitude = z
+    pose_cmd.pose.orientation.x = a
+    pose_cmd.pose.orientation.y = b
+    pose_cmd.pose.orientation.z = c
+    pose_cmd.pose.orientation.w = d
+    return pose_cmd
+
+
 def main():
-    global home_xy_recorded, home_z_recorded, cart_x, cart_y, cart_z, desired_x, desired_y, desired_z, home_yaw, aruco_x, aruco_y, aruco_z, armed
+    global home_xy_recorded, home_z_recorded, cart_x, cart_y, cart_z, desired_x, desired_y, desired_z, home_yaw, aruco_x, aruco_y, aruco_z, armed, is_reached
     global home_x, home_z, home_y, limit_x, limit_y, limit_z, cont, n, t, start_time, cached_var, cached_var_y, cached_var_z, detected_aruco, time_taken, coord
     global vision_avg, full_avg
     xAnt = yAnt = 0
@@ -302,6 +316,7 @@ def main():
     pub4 = rospy.Publisher('path', Path, queue_size=1)
     pub5 = rospy.Publisher('ekf_path', Path, queue_size = 1)
     pub6 = rospy.Publisher('mpc_path', Path, queue_size = 1)
+    pub7 = rospy.Publisher('/mavros/setpoint_position/global', GeoPoseStamped, queue_size=1)
 
     set_arming = rospy.ServiceProxy('/mavros/cmd/arming', CommandBool)
     set_mode = rospy.ServiceProxy('/mavros/set_mode', SetMode)
@@ -319,6 +334,7 @@ def main():
 
     data_timer = 0.
     hold_timer = 0.
+    hover_timer = 0.
 
     mavros.command.arming(True)
     
@@ -331,7 +347,7 @@ def main():
         # set_takeoff(0, 0, None, None, 10)
         set_mode(0, 'AUTO.TAKEOFF')
 
-    while cart_z < 9: continue
+    while cart_z < 9.5: continue
 
     #contact force subscriber
     # rospy.Subscriber('/bumper_states', ContactsState, contact_cb)
@@ -359,8 +375,8 @@ def main():
         else:
             marker_found = True
 
-        print("Vision Time =\t", time.time()-start_timer)
-        vision_avg = (vision_avg + time.time()-start_timer)
+        # print("Vision Time =\t", time.time()-start_timer)
+        # vision_avg = (vision_avg + time.time()-start_timer)
     	# yaw = 360.0 + yaw if yaw < 0 else yaw
 
         if home_z_recorded is False and cart_z != 0 and yaw != 0:
@@ -381,39 +397,50 @@ def main():
             print('Oops')
 
         ################################ MPC ###################################
-        if(marker_found):
+        if(marker_found and is_reached):
             detected_aruco = True
-
+            print("----------------------------SEEN------------------------------------")
             aruco_x = p.point.x
             aruco_y = p.point.y
             aruco_z = p.point.z
-            velocity_x_des, cached_var, diff = MPC_solver(aruco_x, 0, limit_x, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc=2, curr_vel=vel_x)
+            velocity_x_des, cached_var, diff = MPC_solver(aruco_x, 0, limit_x, 0, n, t, True, variables = cached_var, vel_limit = 0.5, acc=0, curr_vel=vel_x)
             x_array = cached_var.get("points")
-            velocity_y_des, cached_var_y, _ = MPC_solver(aruco_y, 0, limit_y, 0, n, t, True, variables = cached_var_y, vel_limit = 0.5, acc=2, curr_vel=vel_y)
+            velocity_y_des, cached_var_y, _ = MPC_solver(aruco_y, 0, limit_y, 0, n, t, True, variables = cached_var_y, vel_limit = 0.5, acc=0, curr_vel=vel_y)
             y_array = cached_var_y.get("points")
-            velocity_z_des, cached_var_z, _ = MPC_solver(aruco_z, 0, limit_z, 0, n, t, True, variables = cached_var_z, vel_limit = 0.8, acc=0, curr_vel=0, pos_cost=0.1, vel_cost=100, debug=False)
-            z_array = cached_var_z.get("points")
-            
-            print(cached_var_z.get("big_H"))
-            mpc_point_arr = np.transpose(np.row_stack((x_array, y_array, z_array)))
+            #velocity_z_des, cached_var_z, _ = MPC_solver(aruco_z, 0, limit_z, 0, n, t, True, variables = cached_var_z, vel_limit = 0.8, acc=0, curr_vel=0, pos_cost=0.1, vel_cost=500, debug=False)
+            # z_array = cached_var_z.get("points")
+            velocity_z_des = -(min(math.sqrt(2*0.064*(aruco_z)), 0.8))
+
+            pub1.publish(twist_obj(velocity_x_des, velocity_y_des, velocity_z_des, 0.0, 0.0, 0.0))
+            # mpc_point_arr = np.transpose(np.row_stack((x_array, y_array, z_array)))
 
             acc = diff / t
-            # print("Marker seen\t", aruco_x, -y_cm, velocity_x_des)
 
 
-        elif(not marker_found and not detected_aruco):
+        elif(not is_reached):
             start_time = rospy.Time.now()
             print("----------------------------NOT SEEN------------------------------------")
+            pub7.publish(geo_pose_obj(13.0272075, 77.5636423, 928, 0, 0, 0, 1))
 
-            velocity_x_des = -0.5
-            velocity_y_des = 0
-            velocity_z_des = 0
-        # print(p)
+            if(abs(vel_x) < 0.1 and abs(vel_y) < 0.1):
+                hover_timer = hover_timer + delta_time
+
+                print(hover_timer)
+
+                if(hover_timer > 5):
+                    is_reached = True
+
+            # velocity_x_des = -0.5
+            # velocity_y_des = 0
+            # velocity_z_des = 0
         
         else:
             velocity_x_des = 0
             velocity_y_des = 0
             velocity_z_des = 0
+
+            pub1.publish(twist_obj(velocity_x_des, velocity_y_des, velocity_z_des, 0.0, 0.0, 0.0))
+
 
         #     velocity_x_des, cached_var, diff = MPC_solver(cart_x, aruco_x, limit_x, 0, n, t, True, variables = cached_var, vel_limit = 100, acc=1, curr_vel=vel_x)
         #     x_array = cached_var.get("points")
@@ -427,7 +454,7 @@ def main():
 
         data_timer = data_timer + delta_time
 
-        if(data_timer > 0.1):
+        if(data_timer > 0.1 and detected_aruco):
             writer.writerow([rospy.get_time(), float(cart_x), float(cart_y), float(cart_z), float(vel_x), float(vel_y), float(vel_z), float(velocity_x_des), float(velocity_y_des), float(velocity_z_des), float(aruco_x), float(aruco_y)])
             data_timer = 0.
 
@@ -443,17 +470,13 @@ def main():
 
             sys.exit()
         
-        print(velocity_z_des, vel_z, aruco_z)
+        # print(velocity_z_des, vel_z, aruco_z)
         # print("Aruco X:\t", aruco_x, "Aruco Y:\t", aruco_y, "Aruco Z:\t", aruco_z)
         # print("")
 
-        pub1.publish(twist_obj(velocity_x_des, velocity_y_des, velocity_z_des, 0.0, 0.0, 0.0))
-        # pub1.publish(twist_obj(velocity_x_des, 0, 0, 0.0, 0.0, 0.0))
-
-        if(acc > abs(max_acc)):
-            max_acc = abs(acc)
-            print("MPC Max:",max_acc)
-
+        # if(acc > abs(max_acc)):
+        #     max_acc = abs(acc)
+        #     print("MPC Max:",max_acc)
 
         # if(detected_aruco):
         #     desired_point = PointStamped(header=Header(stamp=rospy.get_rostime()))
@@ -527,13 +550,13 @@ def main():
         if(hold_timer < 0.2):
             set_mode(0, 'OFFBOARD')
 
-        print("Full Time =\t", time.time()-start_timer)
-        full_avg = (full_avg + time.time()-start_timer)
+        # print("Full Time =\t", time.time()-start_timer)
+        # full_avg = (full_avg + time.time()-start_timer)
 
         rate.sleep()
 
-    print("Vision Average Time =\t", vision_avg/cont)
-    print("Full Average Time =\t", full_avg/cont)
+    # print("Vision Average Time =\t", vision_avg/cont)
+    # print("Full Average Time =\t", full_avg/cont)
         # br2.sendTransform((0, 0, 0), (0, 0, 0, 1), rospy.Time.now(), "fcu", "map")
 
         
