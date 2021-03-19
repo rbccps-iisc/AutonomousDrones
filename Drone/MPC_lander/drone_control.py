@@ -427,7 +427,7 @@ def main():
 
                 print(hover_timer)
 
-                if(hover_timer > 5):
+                if(hover_timer > 2):
                     is_reached = True
 
             # velocity_x_des = -0.5
