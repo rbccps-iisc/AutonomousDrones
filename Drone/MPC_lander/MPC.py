@@ -145,13 +145,13 @@ def MPC_solver(actual=0., desired=0., pos_limit=1000, origin=0, nsteps=10.,inter
 	# print((big_Bb_ineq))
 	# print((big_A_eq))
 	# print((big_b_eq))
-	if(debug):
-		print(np.shape(big_H))
-		print(np.shape(big_h))
-		print(np.shape(big_Ba_ineq))
-		print(np.shape(big_Bb_ineq))
-		print(np.shape(big_A_eq))
-		print(np.shape(big_b_eq))
+	# if(debug):
+	# 	print(np.shape(big_H))
+	# 	print(np.shape(big_h))
+	# 	print(np.shape(big_Ba_ineq))
+	# 	print(np.shape(big_Bb_ineq))
+	# 	print(np.shape(big_A_eq))
+	# 	print(np.shape(big_b_eq))
 	
 	#Calculate solution
 	try:

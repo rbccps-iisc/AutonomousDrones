@@ -30,6 +30,8 @@ def main(f1,f2):
 	des_x_1 = data_1['desired_x']
 	des_y_1 = data_1['desired_y']
 	des_z_1 = data_1['desired_z']
+	aruco_x_1 = data_1['aruco_x']
+	aruco_y_1 = data_1['aruco_y']
 
 	cart_x_2 = data_2['cart_x']
 	cart_y_2 = data_2['cart_y']
@@ -40,6 +42,8 @@ def main(f1,f2):
 	des_x_2 = data_2['desired_x']
 	des_y_2 = data_2['desired_y']
 	des_z_2 = data_2['desired_z']
+	aruco_x_2 = data_2['aruco_x']
+	aruco_y_2 = data_2['aruco_y']
 
 	x_data_1 = data_1.shape[0]
 	x_data_2 = data_2.shape[0]
@@ -55,6 +59,8 @@ def main(f1,f2):
 			des_x_2[i]=(float('NAN'))
 			des_y_2[i]=(float('NAN'))
 			des_z_2[i]=(float('NAN'))
+			aruco_x_2[i] = (float('NAN'))
+			aruco_y_2[i] = (float('NAN'))
 
 	if x_data_2>x_data_1:
 		for i in range(x_data_1,x_data_2):
@@ -67,6 +73,8 @@ def main(f1,f2):
 			des_x_1[i]=(float('NAN'))
 			des_y_1[i]=(float('NAN'))
 			des_z_1[i]=(float('NAN'))
+			aruco_x_1[i] = (float('NAN'))
+			aruco_y_1[i] = (float('NAN'))
 
 	x_data = max(x_data_1,x_data_2)
 	
@@ -191,6 +199,9 @@ def main(f1,f2):
 	save_file = 'desired_velocity_z.png'
 	plt.savefig(os.path.join(save_path,save_file))
 
+	leg1_aruco = ['aruco displacement error ' + f1 , 'desired velocity of ' + f1]
+	leg2_aruco = ['aruco displacement error ' + f2 , 'desired velocity of ' + f2]
+
 	leg1 = ['desired velocity of ' + f1 , 'sensor velocity of ' + f1]
 	leg2 = ['desired velocity of ' + f2 , 'sensor velocity of ' + f2]
 
@@ -272,6 +283,57 @@ def main(f1,f2):
 	save_file = 'velocity_compare_up' + f2 + '.png'
 	plt.savefig(os.path.join(save_path,save_file))
 
+	fig16= plt.figure()
+	ax = plt.gca()
+	ax.plot(range(x_data), np.array(aruco_x_1),'b-')
+	ax.plot(range(x_data), np.array(des_x_1),'r-')
+	ax.grid(True)
+	ax.set(xlabel='data points')
+	plt.xlim(0,x_data+5)
+	#plt.ylim(min(des_z_2,vel_z_2),max(des_z_2,vel_z_2))
+	plt.legend(leg1_aruco)
+	plt.title('Comparision of aruco error vs input velocity for file ' + f1 + ' in x direction')
+	save_file = 'aruco_x' + f1 + '.png'
+	plt.savefig(os.path.join(save_path,save_file))
+
+	fig17= plt.figure()
+	ax = plt.gca()
+	ax.plot(range(x_data), np.array(aruco_y_1),'b-')
+	ax.plot(range(x_data), np.array(des_y_1),'r-')
+	ax.grid(True)
+	ax.set(xlabel='data points')
+	plt.xlim(0,x_data+5)
+	#plt.ylim(min(des_z_2,vel_z_2),max(des_z_2,vel_z_2))
+	plt.legend(leg1_aruco)
+	plt.title('Comparision of aruco error vs input velocity for file ' + f1 + ' in y direction')
+	save_file = 'aruco_y' + f1 + '.png'
+	plt.savefig(os.path.join(save_path,save_file))
+
+	fig18= plt.figure()
+	ax = plt.gca()
+	ax.plot(range(x_data), np.array(aruco_x_2),'b-')
+	ax.plot(range(x_data), np.array(des_x_2),'r-')
+	ax.grid(True)
+	ax.set(xlabel='data points')
+	plt.xlim(0,x_data+5)
+	#plt.ylim(min(des_z_2,vel_z_2),max(des_z_2,vel_z_2))
+	plt.legend(leg2_aruco)
+	plt.title('Comparision of aruco error vs input velocity for file ' + f2 + ' in x direction')
+	save_file = 'aruco_x' + f2 + '.png'
+	plt.savefig(os.path.join(save_path,save_file))
+
+	fig19= plt.figure()
+	ax = plt.gca()
+	ax.plot(range(x_data), np.array(aruco_y_2),'b-')
+	ax.plot(range(x_data), np.array(des_y_2),'r-')
+	ax.grid(True)
+	ax.set(xlabel='data points')
+	plt.xlim(0,x_data+5)
+	#plt.ylim(min(des_z_2,vel_z_2),max(des_z_2,vel_z_2))
+	plt.legend(leg2_aruco)
+	plt.title('Comparision of aruco error vs input velocity for file ' + f2 + ' in y direction')
+	save_file = 'aruco_y' + f2 + '.png'
+	plt.savefig(os.path.join(save_path,save_file))
 	#plt.show()
 
 

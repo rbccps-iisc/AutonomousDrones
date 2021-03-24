@@ -1,3 +1,4 @@
+#!/usr/bin/env python2
 """
 This demo calculates multiple things for different scenarios.
 
@@ -35,7 +36,7 @@ We are going to obtain the following quantities:
 
 
 """
-import rospy
+import rospy, os
 import numpy as np
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
@@ -45,6 +46,7 @@ from sensor_msgs.msg import Image
 import sys, time, math
 from datetime import datetime
 from geometry_msgs.msg import Vector3
+from std_msgs.msg import Bool
 
 class ArucoSingleTracker():
     def __init__(self,
@@ -163,8 +165,11 @@ class ArucoSingleTracker():
         x = y = z = 0
         rate = rospy.Rate(30)
 
+
         pub_coord = rospy.Publisher('aruco_coord', Vector3, queue_size=1)
         coord = Vector3()
+
+        pub_vis = rospy.Publisher('aruco_visible', Bool, queue_size=1)
 
         while not self._kill and not rospy.is_shutdown():
             
@@ -186,7 +191,7 @@ class ArucoSingleTracker():
                             parameters=self._parameters,
                             distCoeff=self._camera_distortion,
                             cameraMatrix=self._camera_matrix)
-
+            
             if not ids is None and self.id_to_find in ids[0]:
                 marker_found = True
                 self._update_fps_detect()
@@ -242,6 +247,10 @@ class ArucoSingleTracker():
 
 
             else:
+            	x = 0
+            	y = 0
+            	z = 0
+            	marker_found = False
                 if verbose: print("Nothing detected - fps = %.0f"%self.fps_read)
             
 
@@ -266,6 +275,8 @@ class ArucoSingleTracker():
                 coord.y = y
                 coord.z = z
                 pub_coord.publish(coord)
+                pub_vis.publish(data=marker_found)
+
 
             rate.sleep()
             if not loop: return(marker_found, x, y, z, corners)
@@ -277,10 +288,9 @@ if __name__ == "__main__":
     marker_size  = 40 #- [cm]
 
     #--- Get the camera calibration path
-    calib_path  = "./"
-    camera_matrix   = np.loadtxt(calib_path+'cameraMatrix.txt', delimiter=',')
-    camera_distortion   = np.loadtxt(calib_path+'cameraDistortion.txt', delimiter=',')                                      
+    calib_path  = os.path.dirname(os.path.abspath(__file__))
+    camera_matrix   = np.loadtxt(calib_path+'/cameraMatrix.txt', delimiter=',')
+    camera_distortion   = np.loadtxt(calib_path+'/cameraDistortion.txt', delimiter=',')                                      
     aruco_tracker = ArucoSingleTracker(id_to_find=id_to_find, marker_size=marker_size, show_video=False, camera_matrix=camera_matrix, camera_distortion=camera_distortion, record_video=False, simulation=False)
-    
     aruco_tracker.track(loop = True)
 

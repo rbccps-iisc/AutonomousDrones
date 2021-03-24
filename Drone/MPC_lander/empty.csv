@@ -1,2 +1,2 @@
-Time,cart_x,cart_y,cart_z,vel_x,vel_y,vel_z,desired_x,desired_y,desired_z
-0,0,0,0,0,0,0,0,0,0
+Time,cart_x,cart_y,cart_z,vel_x,vel_y,vel_z,desired_x,desired_y,desired_z,aruco_x,aruco_y
+0,0,0,0,0,0,0,0,0,0,0,0

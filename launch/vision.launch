@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<launch>
+    <include file="$(find usb_cam)/launch/usb_cam-test.launch"/>
+    
+    <node name="lib_aruco_pose" pkg="multidrone_mission" type="lib_aruco_pose.py" output="screen" respawn="true" args="" />
+</launch>
