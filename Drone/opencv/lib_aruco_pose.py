@@ -305,7 +305,7 @@ if __name__ == "__main__":
 
 	parser = argparse.ArgumentParser(description='camera_param')
 	parser.add_argument('--camera_topic', default='')
-	args = parser.parse_args()
+	args = parser.parse_args(rospy.myargv()[1:])
 	camera_topic = args.camera_topic
 
 	#--- Define Tag
@@ -316,6 +316,6 @@ if __name__ == "__main__":
 	calib_path  = os.path.dirname(os.path.abspath(__file__))
 	camera_matrix   = np.loadtxt(calib_path+'/cameraMatrix.txt', delimiter=',')
 	camera_distortion   = np.loadtxt(calib_path+'/cameraDistortion.txt', delimiter=',')                                      
-	aruco_tracker = ArucoSingleTracker(id_to_find=id_to_find, marker_size=marker_size, show_video=True, camera_matrix=camera_matrix, camera_distortion=camera_distortion, record_video=False, simulation=True, camera_topic=camera_topic)
+	aruco_tracker = ArucoSingleTracker(id_to_find=id_to_find, marker_size=marker_size, show_video=True, camera_matrix=camera_matrix, camera_distortion=camera_distortion, record_video=False, simulation=False, camera_topic=camera_topic)
 	aruco_tracker.track(loop = True)
 

@@ -118,9 +118,9 @@ def waypoint_dataset(dLat,dLon,WP,toh):
 	wp.command = 22  		#Takeoff
 	wp.is_current = False
 	wp.autocontinue = True
-	wp.param1 = 0 					#delay 
-	wp.param2 = 0					#Accept Radius
-	wp.param3 = 0					#Pass Radius
+	wp.param1 = 1 					#delay 
+	wp.param2 = 1					#Accept Radius
+	wp.param3 = 1					#Pass Radius
 	wp.param4 = 0					#Yaw
 	wp.x_lat = gcs_cmd_home_lat		#Latitude
 	wp.y_long = gcs_cmd_home_lon	#Longitude
@@ -134,8 +134,8 @@ def waypoint_dataset(dLat,dLon,WP,toh):
 		wp.is_current = False
 		wp.autocontinue = True
 		wp.param1 = 1  								#delay
-		wp.param2 = 0								#Accept Radius
-		wp.param3 = 0								#Pass Radius
+		wp.param2 = 1								#Accept Radius
+		wp.param3 = 1								#Pass Radius
 		wp.param4 = WP[i][2]						#Yaw
 		wp.x_lat = gcs_cmd_home_lat + dLat[i]		#Latitude
 		wp.y_long = gcs_cmd_home_lon + dLon[i]		#Longitude
@@ -148,8 +148,8 @@ def waypoint_dataset(dLat,dLon,WP,toh):
 	wp.is_current = False
 	wp.autocontinue = True
 	wp.param1 = 1  								#delay
-	wp.param2 = 0								#Accept Radius
-	wp.param3 = 0								#Pass Radius
+	wp.param2 = 1								#Accept Radius
+	wp.param3 = 1								#Pass Radius
 	wp.param4 = WP[0][2]						#Yaw
 	wp.x_lat = gcs_cmd_home_lat + dLat[0]		#Latitude
 	wp.y_long = gcs_cmd_home_lon + dLon[0]		#Longitude
@@ -275,7 +275,7 @@ def normal_mission(drone_ID,waypoints_clean,set_waypoint,set_cur_waypoint,set_mo
 	#For doing mission
 	if armed and cur_alt>=0.9*toh:
 		set_mode(0, 'AUTO.MISSION')
-		while(bat>=critical):
+		while(bat>=low):
 			continue
 		gcs_cmd_x = cur_x
 		gcs_cmd_y = cur_y
@@ -372,14 +372,14 @@ def drone_bat_sim(drone_ID):
 		
 		if armed:
 			if bat>0:
-				bat = bat - 1
-				time.sleep(1)
+				bat = bat - 100
+				time.sleep(180)
 			else:
 				bat = 0
 		if not armed:
 			if bat<100:
-				bat = bat + 10
-				time.sleep(2)
+				bat = bat + 100
+				time.sleep(30)
 			else:
 				bat = 100
 
