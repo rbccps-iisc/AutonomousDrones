@@ -87,7 +87,7 @@ calib_path          = cwd+"/../opencv/"
 camera_distortion   = np.loadtxt(calib_path+'cameraDistortion.txt', delimiter=',')                                      
 camera_matrix       = np.loadtxt(calib_path+'cameraMatrix.txt', delimiter=',')
 
-
+'''
 file_str = path.dirname(path.abspath(__file__)) +'/_' + str(datetime.now().month) + '_' + str(datetime.now().day) + '_' + str(datetime.now().hour) + '_' + str(datetime.now().minute) + '.csv'
 
 
@@ -100,7 +100,7 @@ if not path.isfile(file_str):
 
 csvfile = open(file_str,'a')
 writer = csv.writer(csvfile)
-
+'''
 
 def clamp(num, value):
    return max(min(num, value), -value)
@@ -294,6 +294,20 @@ def main(drone_ID='nan', home_lat=13.0272156, home_lon=77.5638397, call=False, f
     global home_xy_recorded, home_z_recorded, cart_x, cart_y, cart_z, desired_x, desired_y, desired_z, home_yaw, aruco_x, aruco_y, aruco_z, armed, alt
     global home_x, home_z, home_y, limit_x, limit_y, limit_z, cont, n, t, start_time, cached_var, cached_var_y, cached_var_z, time_taken
     global vision_avg, full_avg, coord, visible, detected_aruco, is_reached, sub_alt
+    global file_str
+    
+    file_str = path.dirname(path.abspath(__file__)) +'/_' + str(datetime.now().month) + '_' + str(datetime.now().day) + '_' + str(datetime.now().hour) + '_' + str(datetime.now().minute) + '.csv'
+
+
+    if not path.isfile(file_str):
+        csvfile = open(file_str,'w')
+        fieldnames = ['Time','cart_x','cart_y','cart_z','vel_x','vel_y','vel_z','desired_x','desired_y','desired_z','aruco_x','aruco_y']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        csvfile.close()
+
+csvfile = open(file_str,'a')
+writer = csv.writer(csvfile)
 
     xAnt = yAnt = 0
     acc = 0
@@ -362,7 +376,7 @@ def main(drone_ID='nan', home_lat=13.0272156, home_lon=77.5638397, call=False, f
         set_landing = rospy.ServiceProxy(drone_ID+'/mavros/cmd/land', CommandTOL)
 
 
-    path = Path()
+    fused_path = Path()
     ekf_path = Path()
     mpc_path = Path()
     max_append = 1000
