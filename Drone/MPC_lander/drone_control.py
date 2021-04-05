@@ -306,8 +306,8 @@ def main(drone_ID='nan', home_lat=13.0272156, home_lon=77.5638397, call=False, f
         writer.writeheader()
         csvfile.close()
 
-csvfile = open(file_str,'a')
-writer = csv.writer(csvfile)
+    csvfile = open(file_str,'a')
+    writer = csv.writer(csvfile)
 
     xAnt = yAnt = 0
     acc = 0
@@ -405,6 +405,7 @@ writer = csv.writer(csvfile)
     
     while not rospy.is_shutdown():
         cont = cont + 1
+        print("ReACHED mpc")
 
         start_timer = time.time()
 
@@ -467,7 +468,7 @@ writer = csv.writer(csvfile)
             if(abs(vel_x) < 0.1 and abs(vel_y) < 0.1):
                 hover_timer = hover_timer + delta_time
 
-                #print(hover_timer)
+                print(hover_timer)
 
                 if(hover_timer > 1):
                     is_reached = True
@@ -609,6 +610,7 @@ writer = csv.writer(csvfile)
         hold_timer = hold_timer + delta_time
         
         if(hold_timer < 0.2):
+            print("Hold timer:", hold_timer)
             set_mode(0, 'OFFBOARD')
 
         # print("Full Time =\t", time.time()-start_timer)

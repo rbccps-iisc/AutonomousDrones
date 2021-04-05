@@ -47,8 +47,8 @@ armed = False
 first_land = True
 
 # Command from GSC
-gcs_cmd_home_lat = 13.0272068
-gcs_cmd_home_lon = 77.5636404
+gcs_cmd_home_lat = 13.0272239
+gcs_cmd_home_lon = 77.5638314
 gcs_cmd_x = float('nan')
 gcs_cmd_y = float('nan')
 gcs_cmd_yaw = float('nan')
@@ -84,6 +84,12 @@ def location_cb(data):
 	cur_x = data.pose.pose.position.x
 	cur_y = data.pose.pose.position.y
 	cur_alt = data.pose.pose.position.z
+
+def home_cb(data):
+	global gcs_cmd_home_lat, gcs_cmd_home_lon, home_pos
+	gcs_cmd_home_lat = data.latitude
+	gcs_cmd_home_lon = data.longitude
+	home_pos.unregister()	
 
 #Function callback for drone_ID+'/mavros/imu/data'
 def ori_cb(data):
@@ -189,16 +195,16 @@ def go_to_location(drone_ID,set_mode,set_param,toh,WP,safe):
 	
 	#Setup for initial sorty
 	if math.isnan(gcs_cmd_x):
-		gcs_cmd_x = 0
+		gcs_cmd_x = 0.0
 	if math.isnan(gcs_cmd_y):
-		gcs_cmd_y = 0
+		gcs_cmd_y = 0.0
 	if math.isnan(gcs_cmd_yaw):
 		gcs_cmd_yaw = cur_yaw
 	
 	#Publisher function to go to the desired initial location
-	pos_pub = rospy.Publisher(drone_ID+'/mavros/setpoint_position/local', PoseStamped, queue_size=10)
+	pos_pub = rospy.Publisher(drone_ID+'/mavros/setpoint_position/local', PoseStamped, queue_size=1)
 	init_pos = PoseStamped()
-	init_pos.header.stamp = rospy.Time.now()
+	# init_pos.header.stamp = rospy.Time.now()
 	init_pos.pose.position.x = gcs_cmd_x
 	init_pos.pose.position.y = gcs_cmd_y
 	init_pos.pose.position.z = toh
@@ -225,9 +231,14 @@ def go_to_location(drone_ID,set_mode,set_param,toh,WP,safe):
 			#Go to initial location as commanded by GCS
 			pos_pub.publish(init_pos)
 			set_mode(0, 'OFFBOARD')
-			while((abs(cur_x-gcs_cmd_x)>=0.2) or (abs(cur_y-gcs_cmd_y)>=0.2)):
+			pos_pub.publish(init_pos)
+
+			while((abs(cur_x-gcs_cmd_x)>=1) or (abs(cur_y-gcs_cmd_y)>=1)):
+				#print(abs(cur_x-gcs_cmd_x), abs(cur_y-gcs_cmd_y))
 				pos_pub.publish(init_pos)
+				time.sleep(0.2)
 				
+			set_mode(0, 'AUTO.LOITER')
 
 		#if battery level not sufficient
 		else:
@@ -253,7 +264,7 @@ def normal_mission(drone_ID,waypoints_clean,set_waypoint,set_cur_waypoint,set_mo
 	for i in range(len(WP)):
 		dLat[i], dLon[i] = dis_to_gps(WP[i][0],WP[i][1])
 
-	waypoints_clean.call()
+	# waypoints_clean.call()
 
 	#Setting ground speed
 	mission_speed = ParamValue()
@@ -263,8 +274,12 @@ def normal_mission(drone_ID,waypoints_clean,set_waypoint,set_cur_waypoint,set_mo
 	#Create waypoints
 	W = waypoint_dataset(dLat,dLon,WP,toh)
 
+	time.sleep(0.5)
+
 	#Uploading waypoints and mission
 	set_waypoint(start_index=0, waypoints=W)
+
+	time.sleep(0.5)
 
 	#Subscriber function to control mission parameters
 	rospy.Subscriber(drone_ID+'/mavros/mission/waypoints', WaypointList, control_mission_cb, (set_cur_waypoint,WP))
@@ -273,7 +288,7 @@ def normal_mission(drone_ID,waypoints_clean,set_waypoint,set_cur_waypoint,set_mo
 	set_cur_waypoint(wp_seq=gcs_cmd_wp)
 	
 	#For doing mission
-	if armed and cur_alt>=0.9*toh:
+	if armed:
 		set_mode(0, 'AUTO.MISSION')
 		while(bat>=low):
 			continue
@@ -281,6 +296,7 @@ def normal_mission(drone_ID,waypoints_clean,set_waypoint,set_cur_waypoint,set_mo
 		gcs_cmd_y = cur_y
 		gcs_cmd_yaw = cur_yaw
 		gcs_cmd_wp = cur_wp
+		set_mode(0, 'AUTO.LOITER')
 
 	else:
 		print(drone_ID + ' cannont continue on mission. Please check')
@@ -306,7 +322,7 @@ def go_to_home(drone_ID,pub_aruco):
 
 #Function to subscribe to the GCS command and take action accordingly (runs on sepatate thread)
 def drone_sub(drone_ID,toh,WP,safe,low,critical):
-	global status, armed, bat, cur_alt
+	global status, armed, bat, cur_alt, home_pos
 
 	# Definitions for rospy services
 	set_mode = rospy.ServiceProxy(drone_ID+'/mavros/set_mode', SetMode)
@@ -318,6 +334,9 @@ def drone_sub(drone_ID,toh,WP,safe,low,critical):
 	set_waypoint = rospy.ServiceProxy(drone_ID+'/mavros/mission/push', WaypointPush)
 	set_param = rospy.ServiceProxy(drone_ID+'/mavros/param/set',ParamSet)
 
+
+	#Subscriber to get home lattitude and longitude
+	home_pos = rospy.Subscriber(drone_ID+'/mavros/global_position/global', NavSatFix, home_cb)
 
 	#Publisher function to publish status of drone
 	pub_status = rospy.Publisher(drone_ID+'_status', String, queue_size=1)
@@ -372,14 +391,14 @@ def drone_bat_sim(drone_ID):
 		
 		if armed:
 			if bat>0:
+				time.sleep(20)
 				bat = bat - 100
-				time.sleep(180)
 			else:
 				bat = 0
 		if not armed:
 			if bat<100:
+				time.sleep(15)
 				bat = bat + 100
-				time.sleep(30)
 			else:
 				bat = 100
 
@@ -414,7 +433,7 @@ if __name__ == '__main__':
 	#parser so that arguments can be ammended during run time
 	parser = argparse.ArgumentParser(description='params')
 	parser.add_argument('--dr_no', default=1, type=int)
-	parser.add_argument('--toh', default=5.0, type=float)				#Desired Takeoff height for mission
+	parser.add_argument('--toh', default=10.0, type=float)				#Desired Takeoff height for mission
 	
 	#Mission waypoints in (x,y,heading_angle)
 	parser.add_argument('--waypoints', default=((5,5,0),				#Coordinate for W[1]/W[5] and heading angle while going to W[1]/W[5]
