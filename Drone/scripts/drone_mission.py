@@ -131,9 +131,9 @@ def waypoint_dataset(dLat,dLon,WP,toh):
 	wp.command = 22  		#Takeoff
 	wp.is_current = False
 	wp.autocontinue = True
-	wp.param1 = 0 					#delay 
-	wp.param2 = 0					#Accept Radius
-	wp.param3 = 0					#Pass Radius
+	wp.param1 = 1 					#delay 
+	wp.param2 = 1					#Accept Radius
+	wp.param3 = 1					#Pass Radius
 	wp.param4 = 0					#Yaw
 	wp.x_lat = gcs_cmd_home_lat		#Latitude
 	wp.y_long = gcs_cmd_home_lon	#Longitude
@@ -147,7 +147,7 @@ def waypoint_dataset(dLat,dLon,WP,toh):
 		wp.is_current = False
 		wp.autocontinue = True
 		wp.param1 = 1 								#delay
-		wp.param2 = 0								#Accept Radius
+		wp.param2 = 1								#Accept Radius
 		wp.param3 = 0								#Pass Radius
 		wp.param4 = WP[i][2]						#Yaw
 		wp.x_lat = gcs_cmd_home_lat + dLat[i]		#Latitude
@@ -161,7 +161,7 @@ def waypoint_dataset(dLat,dLon,WP,toh):
 	wp.is_current = False
 	wp.autocontinue = True
 	wp.param1 = 1  								#delay
-	wp.param2 = 0								#Accept Radius
+	wp.param2 = 1								#Accept Radius
 	wp.param3 = 0								#Pass Radius
 	wp.param4 = WP[0][2]						#Yaw
 	wp.x_lat = gcs_cmd_home_lat + dLat[0]		#Latitude
@@ -202,13 +202,13 @@ def go_to_location(drone_ID,set_mode,set_param,toh,WP,safe):
 	
 	#Setup for initial sorty
 	if math.isnan(gcs_cmd_x_diff):
-		gcs_cmd_x_diff = 0
+		gcs_cmd_x_diff = 0.0
 	if math.isnan(gcs_cmd_y_diff):
-		gcs_cmd_y_diff = 0
+		gcs_cmd_y_diff = 0.0
 	if math.isnan(gcs_cmd_x):
-		gcs_cmd_x = 0
+		gcs_cmd_x = 0.0
 	if math.isnan(gcs_cmd_y):
-		gcs_cmd_y = 0
+		gcs_cmd_y = 0.0
 	if math.isnan(gcs_cmd_height):
 		gcs_cmd_height = toh
 	if math.isnan(gcs_cmd_yaw):
@@ -241,15 +241,19 @@ def go_to_location(drone_ID,set_mode,set_param,toh,WP,safe):
 			set_param(param_id='MIS_TAKEOFF_ALT', value=takeoff_alt) 
 
 			set_mode(0, 'AUTO.TAKEOFF')
-			while(cur_alt <= 0.95*toh):
+			while(cur_alt <= 0.9*toh):
 				time.sleep(1)
 
 			#Go to initial location as commanded by GCS
 			pos_pub.publish(init_pos)
 			set_mode(0, 'OFFBOARD')
+
 			while((abs(cur_x-gcs_cmd_x)>=0.5) or (abs(cur_y-gcs_cmd_y)>=0.5)):
-				pos_pub.publish(init_pos)
 				#print((abs(cur_x-gcs_cmd_x)),(abs(cur_y-gcs_cmd_y)))
+				pos_pub.publish(init_pos)
+				time.sleep(0.2)
+
+			set_mode(0, 'AUTO.LOITER')
 				
 
 		#if battery level not sufficient
@@ -276,7 +280,7 @@ def normal_mission(drone_ID,waypoints_clean,set_waypoint,set_cur_waypoint,set_mo
 	for i in range(len(WP)):
 		dLat[i], dLon[i] = dis_to_gps(WP[i][0],WP[i][1])
 
-	waypoints_clean.call()
+	#waypoints_clean.call()
 
 	#Setting ground speed
 	mission_speed = ParamValue()
@@ -286,8 +290,12 @@ def normal_mission(drone_ID,waypoints_clean,set_waypoint,set_cur_waypoint,set_mo
 	#Create waypoints
 	W = waypoint_dataset(dLat,dLon,WP,toh)
 
+	time.sleep(0.5)
+
 	#Uploading waypoints and mission
 	set_waypoint(start_index=0, waypoints=W)
+
+	time.sleep(0.5)
 
 	#Subscriber function to control mission parameters
 	rospy.Subscriber(drone_ID+'/mavros/mission/waypoints', WaypointList, control_mission_cb, (set_cur_waypoint,WP))
@@ -296,10 +304,11 @@ def normal_mission(drone_ID,waypoints_clean,set_waypoint,set_cur_waypoint,set_mo
 	set_cur_waypoint(wp_seq=gcs_cmd_wp)
 	
 	#For doing mission
-	if armed and cur_alt>=0.9*toh:
+	if armed:
 		set_mode(0, 'AUTO.MISSION')
-		while(bat>=critical):
+		while(bat>=low):
 			continue
+		set_mode(0, 'AUTO.LOITER')
 
 	else:
 		print(drone_ID + ' cannont continue on mission. Please check')

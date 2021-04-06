@@ -306,8 +306,8 @@ def main(drone_ID='nan', home_lat=13.0272156, home_lon=77.5638397, call=False, f
         writer.writeheader()
         csvfile.close()
 
-csvfile = open(file_str,'a')
-writer = csv.writer(csvfile)
+    csvfile = open(file_str,'a')
+    writer = csv.writer(csvfile)
 
     xAnt = yAnt = 0
     acc = 0
@@ -361,7 +361,7 @@ writer = csv.writer(csvfile)
 
     if not call:
         pub1 = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel', TwistStamped, queue_size = 1)
-        pub7 = rospy.Publisher('/drone1/mavros/setpoint_position/global', GeoPoseStamped, queue_size=1)
+        pub7 = rospy.Publisher('/mavros/setpoint_position/global', GeoPoseStamped, queue_size=1)
     else:
         pub1 = rospy.Publisher(drone_ID+'/mavros/setpoint_velocity/cmd_vel', TwistStamped, queue_size = 1)
         pub7 = rospy.Publisher(drone_ID+'/mavros/setpoint_position/global', GeoPoseStamped, queue_size=1)
@@ -402,6 +402,7 @@ writer = csv.writer(csvfile)
 
     #contact force subscriber
     # rospy.Subscriber('/bumper_states', ContactsState, contact_cb)
+    print("ReACHED mpc")
     
     while not rospy.is_shutdown():
         cont = cont + 1
@@ -467,7 +468,7 @@ writer = csv.writer(csvfile)
             if(abs(vel_x) < 0.1 and abs(vel_y) < 0.1):
                 hover_timer = hover_timer + delta_time
 
-                #print(hover_timer)
+                print(hover_timer)
 
                 if(hover_timer > 1):
                     is_reached = True
@@ -511,6 +512,11 @@ writer = csv.writer(csvfile)
             data_timer = 0.
         '''
         # dist = sqrt((aruco_x)**2+(aruco_y)**2)#+(aruco_u)**2)
+        hold_timer = hold_timer + delta_time
+        
+        if(hold_timer < 0.2):
+            print("Hold timer:", hold_timer)
+            set_mode(0, 'OFFBOARD')
 
         if(marker_found == True and cart_z <= 1.5):
             velocity_x_des = velocity_y_des = 0
@@ -606,10 +612,6 @@ writer = csv.writer(csvfile)
             #         path.poses.pop(0)
             #         ekf_path.poses.pop(0)
 
-        hold_timer = hold_timer + delta_time
-        
-        if(hold_timer < 0.2):
-            set_mode(0, 'OFFBOARD')
 
         # print("Full Time =\t", time.time()-start_timer)
         full_avg = (full_avg + time.time()-start_timer)
