@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+Drone/MPC_lander/drone_control.pyc#!/usr/bin/env python
 
 # Code to control drone
 # running this code should cause drone to take commands from GCS and act accordingly
@@ -391,13 +391,15 @@ def drone_bat_sim(drone_ID):
 		
 		if armed:
 			if bat>0:
-				time.sleep(30)
+
+				time.sleep(20)
 				bat = bat - 100
 			else:
 				bat = 0
 		if not armed:
 			if bat<100:
-				time.sleep(10)
+				time.sleep(15)
+
 				bat = bat + 100
 			else:
 				bat = 100

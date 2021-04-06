@@ -406,6 +406,7 @@ def main(drone_ID='nan', home_lat=13.0272156, home_lon=77.5638397, call=False, f
     
     while not rospy.is_shutdown():
         cont = cont + 1
+        print("ReACHED mpc")
 
         start_timer = time.time()
 
