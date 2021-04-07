@@ -1,4 +1,4 @@
-Drone/MPC_lander/drone_control.pyc#!/usr/bin/env python
+#!/usr/bin/env python
 
 # Code to control drone
 # running this code should cause drone to take commands from GCS and act accordingly
@@ -47,8 +47,9 @@ armed = False
 first_land = True
 
 # Command from GSC
-gcs_cmd_home_lat = 13.0272239
-gcs_cmd_home_lon = 77.5638314
+gcs_cmd_home_lat = float('nan')
+gcs_cmd_home_lon = float('nan')
+gcs_cmd_home_alt = float('nan')
 gcs_cmd_x = float('nan')
 gcs_cmd_y = float('nan')
 gcs_cmd_yaw = float('nan')
@@ -85,11 +86,17 @@ def location_cb(data):
 	cur_y = data.pose.pose.position.y
 	cur_alt = data.pose.pose.position.z
 
+#Function callback for drone_ID+'/mavros/global_position/global'
 def home_cb(data):
 	global gcs_cmd_home_lat, gcs_cmd_home_lon, home_pos
 	gcs_cmd_home_lat = data.latitude
 	gcs_cmd_home_lon = data.longitude
-	home_pos.unregister()	
+	home_pos.unregister()
+
+def alt_cb(data):
+	global gcs_cmd_home_alt, home_alt
+	gcs_cmd_home_alt = data.amsl
+	home_alt.unregister()
 
 #Function callback for drone_ID+'/mavros/imu/data'
 def ori_cb(data):
@@ -305,11 +312,11 @@ def normal_mission(drone_ID,waypoints_clean,set_waypoint,set_cur_waypoint,set_mo
 
 #Function called by drone_sub()
 def go_to_home(drone_ID,pub_aruco):
-	global armed, gcs_cmd_home_lat, gcs_cmd_home_lon, first_land
+	global armed, gcs_cmd_home_lat, gcs_cmd_home_lon, gcs_cmd_home_alt, first_land
 
 	if armed:
 		pub_aruco.publish(True)
-		drone_control.main(drone_ID=drone_ID, home_lat=gcs_cmd_home_lat, home_lon=gcs_cmd_home_lon, call=True, first_land=first_land)
+		drone_control.main(drone_ID=drone_ID, home_lat=gcs_cmd_home_lat, home_lon=gcs_cmd_home_lon, home_alt=gcs_cmd_home_alt, call=True, first_land=first_land)
 		pub_aruco.publish(False)
 
 	else:
@@ -322,7 +329,7 @@ def go_to_home(drone_ID,pub_aruco):
 
 #Function to subscribe to the GCS command and take action accordingly (runs on sepatate thread)
 def drone_sub(drone_ID,toh,WP,safe,low,critical):
-	global status, armed, bat, cur_alt, home_pos
+	global status, armed, bat, cur_alt, home_pos, home_alt
 
 	# Definitions for rospy services
 	set_mode = rospy.ServiceProxy(drone_ID+'/mavros/set_mode', SetMode)
@@ -337,6 +344,9 @@ def drone_sub(drone_ID,toh,WP,safe,low,critical):
 
 	#Subscriber to get home lattitude and longitude
 	home_pos = rospy.Subscriber(drone_ID+'/mavros/global_position/global', NavSatFix, home_cb)
+
+	#Subscriber to get home altitude
+	home_alt = rospy.Subscriber(drone_ID+'/mavros/altitude', Altitude, alt_cb)
 
 	#Publisher function to publish status of drone
 	pub_status = rospy.Publisher(drone_ID+'_status', String, queue_size=1)
