@@ -3,6 +3,7 @@ float64 lat
 float64 lon
 float64 home_lat
 float64 home_lon
+float64 home_alt
 float64 x_diff
 float64 y_diff
 float64 x

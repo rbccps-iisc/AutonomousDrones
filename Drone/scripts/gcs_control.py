@@ -32,12 +32,26 @@ from multidrone_mission.msg import gcs_msg
 #number of drones/drones
 ndr = 2
 
+
+home_lat = float('nan')
+home_lon = float('nan')
+home_alt = float('nan')
+
+def global_pos_cb(data):
+	global home_lat, home_lon, call_home_pos
+	home_lat = data.latitude
+	home_lon = data.longitude
+	call_home_pos.unregister()
+
+def global_alt_cb(data):
+	global home_alt, call_home_alt
+	home_alt = data.amsl
+	call_home_alt.unregister()
+
+
 class drone_params(object):
 
 	def __init__(self):
-		self.cur_lat = 0
-		self.cur_lon = 0
-		self.cur_absalt = 0
 		self.cur_x = 0
 		self.cur_y = 0
 		self.cur_alt = 0
@@ -48,11 +62,6 @@ class drone_params(object):
 		self.waypoint = 1
 		self.status = 'unavailable'
 		self.bat = 100
-
-	def global_pos_cb(self, data):
-		self.cur_lat = data.latitude
-		self.cur_lon = data.longitude
-		self.cur_absalt = data.altitude
 
 	def local_pos_cb(self,data):
 		self.cur_x = data.pose.pose.position.x
@@ -83,6 +92,9 @@ class drone_params(object):
 
 
 def main():
+
+	global home_lat, home_lon, home_alt, call_home_pos, call_home_alt
+
 	rospy.init_node('gcs_control')
 	rate = rospy.Rate(10)
 	
@@ -91,7 +103,9 @@ def main():
 	for i in range(ndr):
 		drone[i] = drone_params()
 
-	rospy.Subscriber('/drone1/mavros/global_position/global', NavSatFix, drone[0].global_pos_cb)
+	call_home_pos = rospy.Subscriber('/drone1/mavros/global_position/global', NavSatFix, global_pos_cb)
+	call_home_alt = rospy.Subscriber('/drone1/mavros/altitude',Altitude, global_alt_cb)
+
 	rospy.Subscriber('/drone1/mavros/global_position/local', Odometry, drone[0].local_pos_cb)
 	rospy.Subscriber('/drone1/mavros/imu/data', Imu, drone[0].ori_cb)
 	rospy.Subscriber('/drone1/mavros/state', State, drone[0].armed_cb)
@@ -100,7 +114,8 @@ def main():
 	rospy.Subscriber('/drone1_battery', Int16, drone[0].bat_cb_sim)
 	pub_home_1 = rospy.Publisher('/drone1/mavros/global_position/home', HomePosition, queue_size=10)
 
-	rospy.Subscriber('/drone2/mavros/global_position/global', NavSatFix, drone[1].global_pos_cb)
+	#rospy.Subscriber('/drone2/mavros/global_position/global', NavSatFix, drone[1].global_pos_cb)
+	#rospy.Subscriber('/drone2/mavros/altitude',Altitude, drone[1].alt_cb)
 	rospy.Subscriber('/drone2/mavros/global_position/local',Odometry, drone[1].local_pos_cb)
 	rospy.Subscriber('/drone2/mavros/imu/data', Imu, drone[1].ori_cb)
 	rospy.Subscriber('/drone2/mavros/state', State, drone[1].armed_cb)
@@ -112,9 +127,12 @@ def main():
 	
 	time.sleep(1)
 	pub_home = HomePosition()
-	pub_home.geo.latitude = drone[0].cur_lat
-	pub_home.geo.longitude = drone[0].cur_lon
-	pub_home.geo.altitude = drone[0].cur_absalt
+	#pub_home.geo.latitude = drone[0].cur_lat
+	#pub_home.geo.longitude = drone[0].cur_lon
+	#pub_home.geo.altitude = drone[0].cur_absalt
+	pub_home.geo.latitude = home_lat
+	pub_home.geo.longitude = home_lon
+	pub_home.geo.altitude = home_alt
 	time.sleep(1)
 	pub_home_1.publish(pub_home)
 	time.sleep(1)
@@ -128,24 +146,27 @@ def main():
 
 	x_diff[1] = drone[0].cur_x - drone[1].cur_x
 	y_diff[1] = drone[0].cur_y - drone[1].cur_y
-	
+
+
 	#Checking if home location is set properly
 	for i in range(ndr):
-		if(drone[i].cur_x+x_diff[i]>0.1 and drone[0].cur_y+y_diff[i]>0.1):
+		if(drone[i].cur_x+x_diff[i]>0.1 and drone[i].cur_y+y_diff[i]>0.1):
 			print('drone' + str(i+1) + ' Home Location ERROR')
 			exit()
 		
 
-	home_lat = drone[0].cur_lat
-	home_lon = drone[0].cur_lon
+	#home_lat = drone[0].cur_lat
+	#home_lon = drone[0].cur_lon
+	#home_alt = drone[0].cur_absalt
 
 	pub_cmd = rospy.Publisher('gcs_command', gcs_msg, queue_size=1)
 	cmd = gcs_msg()
 
 	cmd.home_lat = home_lat
 	cmd.home_lon = home_lon
+	cmd.home_alt = home_alt
 
-
+	
 	start = False
 
 	while not rospy.is_shutdown():	

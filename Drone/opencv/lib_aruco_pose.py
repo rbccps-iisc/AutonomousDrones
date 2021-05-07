@@ -59,7 +59,8 @@ class ArucoSingleTracker():
 				show_video=False,
 				simulation=False,
 				record_video=False,
-				camera_topic=''
+				camera_topic='',
+				drone_ID=''
 				):
 		
 		if simulation:
@@ -69,7 +70,7 @@ class ArucoSingleTracker():
 
 		rospy.Subscriber(camera_topic, Image, self.imageCb)
 
-		rospy.Subscriber('run_aruco_detect', Bool, self.runCb)
+		rospy.Subscriber(drone_ID+'/run_aruco_detect', Bool, self.runCb)
 		
 		self.bridge = CvBridge()
 	 
@@ -305,17 +306,19 @@ if __name__ == "__main__":
 
 	parser = argparse.ArgumentParser(description='camera_param')
 	parser.add_argument('--camera_topic', default='')
+	parser.add_argument('--drone_ID', default='')
 	args = parser.parse_args(rospy.myargv()[1:])
 	camera_topic = args.camera_topic
+	drone_ID = args.drone_ID
 
 	#--- Define Tag
-	id_to_find  = 72
-	marker_size  = 40 #- [cm]
+	id_to_find  = 70
+	marker_size  = 50 #- [cm]
 
 	#--- Get the camera calibration path
 	calib_path  = os.path.dirname(os.path.abspath(__file__))
 	camera_matrix   = np.loadtxt(calib_path+'/cameraMatrix.txt', delimiter=',')
 	camera_distortion   = np.loadtxt(calib_path+'/cameraDistortion.txt', delimiter=',')                                      
-	aruco_tracker = ArucoSingleTracker(id_to_find=id_to_find, marker_size=marker_size, show_video=False, camera_matrix=camera_matrix, camera_distortion=camera_distortion, record_video=False, simulation=False, camera_topic=camera_topic)
+	aruco_tracker = ArucoSingleTracker(id_to_find=id_to_find, marker_size=marker_size, show_video=False, camera_matrix=camera_matrix, camera_distortion=camera_distortion, record_video=False, simulation=True, camera_topic=camera_topic, drone_ID=drone_ID)
 	aruco_tracker.track(loop = True)
 

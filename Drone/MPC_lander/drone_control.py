@@ -405,9 +405,12 @@ def main(drone_ID='nan', home_lat=13.0272156, home_lon=77.5638397, home_alt=0.0,
 
 	#contact force subscriber
 	# rospy.Subscriber('/bumper_states', ContactsState, contact_cb)
-	print("ReACHED mpc")
+
+	if call:
+		print("REACHED mpc")
 	
 	while not rospy.is_shutdown():
+		
 		out_of_view_count = 0
 		cont = cont + 1
 
@@ -443,7 +446,7 @@ def main(drone_ID='nan', home_lat=13.0272156, home_lon=77.5638397, home_alt=0.0,
 		if(marker_found and is_reached):
 			out_of_view_count = 0
 			detected_aruco = True
-			#print("----------------------------SEEN------------------------------------")
+			print("----------------------------SEEN------------------------------------")
 			aruco_x = p.point.x
 			aruco_y = p.point.y
 			aruco_z = p.point.z
@@ -463,7 +466,7 @@ def main(drone_ID='nan', home_lat=13.0272156, home_lon=77.5638397, home_alt=0.0,
 
 		elif(not is_reached):
 			start_time = rospy.Time.now()
-			#print("----------------------------NOT SEEN------------------------------------")
+			print("----------------------------NOT SEEN------------------------------------")
 			
 			if first_attempt:
 				pub7.publish(geo_pose_obj(home_lat, home_lon, home_alt+10, 0, 0, 0, 1))
@@ -534,7 +537,7 @@ def main(drone_ID='nan', home_lat=13.0272156, home_lon=77.5638397, home_alt=0.0,
 		hold_timer = hold_timer + delta_time
 		
 		if(hold_timer < 0.2):
-			print("Hold timer:", hold_timer)
+			#print("Hold timer:", hold_timer)
 			set_mode(0, 'OFFBOARD')
 
 		if(marker_found == True and cart_z <= 1.5):

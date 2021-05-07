@@ -93,6 +93,7 @@ def home_cb(data):
 	gcs_cmd_home_lon = data.longitude
 	home_pos.unregister()
 
+#Function callback for drone_ID+'/mavros/altitude'
 def alt_cb(data):
 	global gcs_cmd_home_alt, home_alt
 	gcs_cmd_home_alt = data.amsl
