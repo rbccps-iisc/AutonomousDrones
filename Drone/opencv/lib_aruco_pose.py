@@ -307,13 +307,16 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='camera_param')
 	parser.add_argument('--camera_topic', default='')
 	parser.add_argument('--drone_ID', default='')
+	parser.add_argument('--id_to_find', default=70)
+	parser.add_argument('--marker_size', default=50)
+
 	args = parser.parse_args(rospy.myargv()[1:])
 	camera_topic = args.camera_topic
 	drone_ID = args.drone_ID
 
 	#--- Define Tag
-	id_to_find  = 70
-	marker_size  = 50 #- [cm]
+	id_to_find  = args.id_to_find
+	marker_size  = args.marker_size 	#- [cm]
 
 	#--- Get the camera calibration path
 	calib_path  = os.path.dirname(os.path.abspath(__file__))
