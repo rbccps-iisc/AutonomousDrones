@@ -28,7 +28,8 @@ from std_msgs.msg import String, Int16, Bool
 
 from mavros_msgs.msg import *
 from mavros_msgs.srv import *
-from sensor_msgs.msg import Imu
+from sensor_msgs.msg import *
+
 from geometry_msgs.msg import PoseStamped
 from geographic_msgs.msg import GeoPoseStamped
 from nav_msgs.msg import Odometry
@@ -64,6 +65,9 @@ class DroneMission():
 		self.__gcs_cmd_home_lat = float('nan')
 		self.__gcs_cmd_home_lon = float('nan')
 		self.__gcs_cmd_home_alt = float('nan')
+		self.__gcs_cmd_aruco_lat = float('nan')
+		self.__gcs_cmd_aruco_lon = float('nan')
+		self.__gcs_cmd_aruco_alt = float('nan')
 		self.__gcs_cmd_x_diff = float('nan')
 		self.__gcs_cmd_y_diff = float('nan')
 		self.__gcs_cmd_x = float('nan')
@@ -120,6 +124,9 @@ class DroneMission():
 		self.__gcs_cmd_home_lat = data.home_lat
 		self.__gcs_cmd_home_lon = data.home_lon
 		self.__gcs_cmd_home_alt = data.home_alt
+		self.__gcs_cmd_aruco_lat = data.aruco_lat
+		self.__gcs_cmd_aruco_lon = data.aruco_lon
+		self.__gcs_cmd_aruco_alt = data.aruco_alt
 		self.__gcs_cmd_x_diff = data.x_diff
 		self.__gcs_cmd_y_diff = data.y_diff
 		self.__gcs_cmd_x = data.x
@@ -203,7 +210,8 @@ class DroneMission():
 
 
 	#Drone goes to initial location as commanded by GCS
-	def __go_to_location(self):
+	# (Can be made as protected function later)
+	def go_to_location(self):
 		
 		#Setup for initial sorty
 		if math.isnan(self.__gcs_cmd_x_diff):
@@ -251,7 +259,7 @@ class DroneMission():
 				pos_pub.publish(init_pos)
 				self.__set_mode(0, 'OFFBOARD')
 
-				while((abs(self.__cur_x-self.__gcs_cmd_x)>=0.2) or (abs(self.__cur_y-self.__gcs_cmd_y)>=0.2)):
+				while((abs(self.__cur_x-self.__gcs_cmd_x)>=1) or (abs(self.__cur_y-self.__gcs_cmd_y)>=1)):			
 					pos_pub.publish(init_pos)
 					time.sleep(0.2)
 
@@ -273,7 +281,8 @@ class DroneMission():
 			
 
 	#Surveillance Mission
-	def __normal_mission(self):
+	# (Can be made as protected function later)
+	def normal_mission(self):
 
 		self.__dLat, self.__dLon = [None]*len(self.WP), [None]*len(self.WP)
 
@@ -316,7 +325,8 @@ class DroneMission():
 
 
 	#Sequence to wait for replacement drone
-	def __hower_and_wait(self):
+	# (Can be made as protected function later)
+	def hower_and_wait(self):
 			
 		#Publisher to increase drone's altitude
 		alt_pub = rospy.Publisher(self.drone_ID+'/mavros/setpoint_position/local', PoseStamped, queue_size=10)
@@ -342,11 +352,12 @@ class DroneMission():
 
 
 	#Land sequence using Aruco Marker
-	def __go_to_home(self):
+	# (Can be made as protected function later)
+	def go_to_home(self):
 
-		
+		'''
 		if self.__armed:
-			land_obj = LandUsingMPC(drone_ID=self.drone_ID, aruco_lat=self.__gcs_cmd_home_lat, aruco_lon=self.__gcs_cmd_home_lon, home_alt=self.__gcs_cmd_home_alt, call=True, first_land=self.__first_land)
+			land_obj = LandUsingMPC(drone_ID=self.drone_ID, aruco_lat=self.__gcs_cmd_aruco_lat, aruco_lon=self.__gcs_cmd_aruco_lon, home_alt=self.__gcs_cmd_aruco_alt, call=True, first_land=self.__first_land)
 			self.__pub_aruco.publish(True)
 			land_obj.land()
 			self.__pub_aruco.publish(False)
@@ -357,27 +368,33 @@ class DroneMission():
 		
 		if self.__first_land:
 			self.__first_land = False
-
+		'''
 
 		# Simple land sequence (without MPC) for testing on simulation only
-		'''
-		self.__set_mode(0, 'OFFBOARD')
+		
+		pub_goto = rospy.Publisher(self.drone_ID+'/mavros/setpoint_position/global',  GeoPoseStamped, queue_size=10)
+		gl = GeoPoseStamped()
+		gl.header.stamp = rospy.Time.now()
+		gl.pose.position.latitude = self.__gcs_cmd_aruco_lat
+		gl.pose.position.longitude = self.__gcs_cmd_aruco_lon
+		gl.pose.position.altitude = self.__gcs_cmd_aruco_alt + 5
+		[gl.pose.orientation.x, gl.pose.orientation.y, gl.pose.orientation.z, gl.pose.orientation.w] = quaternion_from_euler(0,0,0)
 
-		while self.__armed:
-			pub_goto = rospy.Publisher(self.drone_ID+'/mavros/setpoint_position/local', PoseStamped, queue_size=1)
-			gl = PoseStamped()
-			gl.pose.position.x = 0 + self.__gcs_cmd_x_diff
-			gl.pose.position.y = 0 + self.__gcs_cmd_y_diff
-			gl.pose.position.z = 0
-			[gl.pose.orientation.x, gl.pose.orientation.y, gl.pose.orientation.z, gl.pose.orientation.w] = quaternion_from_euler(0,0,0)
+		#Increase altitude and hover
+		if self.__armed:
 			pub_goto.publish(gl)
-		'''
+			for i in range(2000):
+				self.__set_mode(0, 'OFFBOARD')
+				pub_goto.publish(gl)
+			self.__set_mode(0, 'AUTO.LAND')
+
 
 	#Function to subscribe to the GCS command and take action accordingly
-	def __drone_sub(self):
+	# (Can be made as protected function later)
+	def drone_sub(self):
 
 		#Subscriber function to get GCS commands
-		rospy.Subscriber('gcs_command', gcs_msg, self.__gcs_command_cb)
+		rospy.Subscriber(drone_ID+'_gcs_command', gcs_msg, self.__gcs_command_cb)
 
 		#Subscriber functions
 		rospy.Subscriber(self.drone_ID+'/mavros/state', State, self.__armed_cb)
@@ -392,25 +409,25 @@ class DroneMission():
 			if self.__gcs_cmd_str == self.drone_ID + ' takeoff': 		#GCS takeoff and go to position command for drone			
 				print(self.drone_ID + ' copy takeoff')
 				self.__pub_status.publish(self.drone_ID + ' takeoff')
-				self.__go_to_location()
+				self.go_to_location()
 				self.__pub_status.publish(self.drone_ID + ' at location')
 
 			if self.__gcs_cmd_str == self.drone_ID + ' do mission':			#GCS normal mission command for drone
 				print(self.drone_ID + ' copy doing mission')
 				self.__pub_status.publish(self.drone_ID + ' doing mission')
-				self.__normal_mission()
+				self.normal_mission()
 				self.__pub_status.publish(self.drone_ID + ' need replacement')
 			
 			if self.__gcs_cmd_str == self.drone_ID + ' replacement ready':			#GCS command for drone to suggest that another drone is available for replacement
 				print(self.drone_ID + ' copy preparing for replacement')
 				self.__pub_status.publish(self.drone_ID + ' copy preparing for replacement')
-				self.__hower_and_wait()
+				self.hower_and_wait()
 				self.__pub_status.publish(self.drone_ID + ' ready for replacement')
 			
 			if self.__gcs_cmd_str == self.drone_ID + ' land':					#GCS go to home location and land command for drone
 				print(self.drone_ID + ' copy land')
 				self.__pub_status.publish(self.drone_ID + ' copy landing')
-				self.__go_to_home()
+				self.go_to_home()
 				self.__pub_status.publish(self.drone_ID + ' grounded')
 			
 			if self.__gcs_cmd_str == 'replacement for ' + self.drone_ID + ' not ready':	#GCS command for drone to suggest that no other drone is available for replacement
@@ -425,7 +442,8 @@ class DroneMission():
 
 
 	#Function to get battery level
-	def __drone_bat(self):
+	# (Can be made as protected function later)
+	def drone_bat(self):
 		rospy.Subscriber(self.drone_ID+'/mavros/battery', BatteryState, self.__bat_cb)
 
 	
@@ -434,7 +452,8 @@ class DroneMission():
 	#-------------------
 
 	#Function to simulate the charging and discharging of battery level
-	def __drone_bat_sim(self):
+	# (Can be made as protected function later)
+	def drone_bat_sim(self):
 
 		pub_bat = rospy.Publisher(self.drone_ID+'_battery', Int16, queue_size=1)
 
@@ -442,14 +461,14 @@ class DroneMission():
 			
 			if self.__armed:
 				if self.__bat>0:
-					time.sleep(60)
+					time.sleep(75)
 					self.__bat = self.__bat - 100
 				else:
 					self.__bat = 0
 			if not self.__armed:
 				if self.__bat<100:
-					time.sleep(1)
-					self.__bat = self.__bat + 100
+					time.sleep(10)
+					self.__bat = self.__bat + 10
 				else:
 					self.__bat = 100
 
@@ -461,12 +480,12 @@ class DroneMission():
 	#main executable function
 	def run(self):
 
-		thread1 = threading.Thread(target=self.__drone_sub)
+		thread1 = threading.Thread(target=self.drone_sub)
 
 		if self.Simulation:
-			thread2 = threading.Thread(target=self.__drone_bat_sim)
+			thread2 = threading.Thread(target=self.drone_bat_sim)
 		else:
-			thread2 = threading.Thread(target=self.__drone_bat)
+			thread2 = threading.Thread(target=self.drone_bat)
 
 		thread1.start()
 		thread2.daemon=True
@@ -506,7 +525,9 @@ if __name__ == '__main__':
 	parser.add_argument('--waypoints', default=((5,5,0),				#Coordinate for W[1]/W[5] and heading angle while going to W[1]/W[5]
 												(-5,5,90),				#Coordinate for W[2] and heading angle while going to W[2]
 												(-5,-5,180),			#Coordinate for W[3] and heading angle while going to W[3]
-												(5,-5,270)))			#Coordinate for W[4] and heading angle while going to W[4]		
+												(5,-5,270)),			#Coordinate for W[4] and heading angle while going to W[4]		
+												nargs="+",
+												type=list)
 
 	parser.add_argument('--safe_bat',default=90, type=int)				#Minimum safe battery level to authorize takeoff (percentage)
 	parser.add_argument('--low_bat', default=80, type=int)				#Low battery level (percentage)
