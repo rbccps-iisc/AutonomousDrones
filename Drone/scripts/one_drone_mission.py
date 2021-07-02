@@ -93,6 +93,7 @@ def home_cb(data):
 	gcs_cmd_home_lon = data.longitude
 	home_pos.unregister()
 
+#Function callback for drone_ID+'/mavros/altitude'
 def alt_cb(data):
 	global gcs_cmd_home_alt, home_alt
 	gcs_cmd_home_alt = data.amsl
@@ -131,7 +132,7 @@ def waypoint_dataset(dLat,dLon,WP,toh):
 	wp.command = 22  		#Takeoff
 	wp.is_current = False
 	wp.autocontinue = True
-	wp.param1 = 1 					#delay 
+	wp.param1 = 0 					#delay 
 	wp.param2 = 1					#Accept Radius
 	wp.param3 = 1					#Pass Radius
 	wp.param4 = 0					#Yaw
@@ -146,7 +147,7 @@ def waypoint_dataset(dLat,dLon,WP,toh):
 		wp.command = 16  		#Navigate to waypoint.
 		wp.is_current = False
 		wp.autocontinue = True
-		wp.param1 = 1  								#delay
+		wp.param1 = 0  								#delay
 		wp.param2 = 1								#Accept Radius
 		wp.param3 = 1								#Pass Radius
 		wp.param4 = WP[i][2]						#Yaw
@@ -160,7 +161,7 @@ def waypoint_dataset(dLat,dLon,WP,toh):
 	wp.command = 16  		#Navigate to waypoint.
 	wp.is_current = False
 	wp.autocontinue = True
-	wp.param1 = 1  								#delay
+	wp.param1 = 0  								#delay
 	wp.param2 = 1								#Accept Radius
 	wp.param3 = 1								#Pass Radius
 	wp.param4 = WP[0][2]						#Yaw
@@ -241,7 +242,7 @@ def go_to_location(drone_ID,set_mode,set_param,toh,WP,safe):
 			pos_pub.publish(init_pos)
 
 			while((abs(cur_x-gcs_cmd_x)>=1) or (abs(cur_y-gcs_cmd_y)>=1)):
-				#print(abs(cur_x-gcs_cmd_x), abs(cur_y-gcs_cmd_y))
+				print(abs(cur_x-gcs_cmd_x), abs(cur_y-gcs_cmd_y))
 				pos_pub.publish(init_pos)
 				time.sleep(0.2)
 				
@@ -277,6 +278,7 @@ def normal_mission(drone_ID,waypoints_clean,set_waypoint,set_cur_waypoint,set_mo
 	mission_speed = ParamValue()
 	mission_speed.real = 2.0
 	set_param(param_id='MPC_XY_VEL_MAX', value=mission_speed)
+	set_param(param_id='MPC_XY_CRUISE', value=mission_speed)
 
 	#Create waypoints
 	W = waypoint_dataset(dLat,dLon,WP,toh)
@@ -316,6 +318,7 @@ def go_to_home(drone_ID,pub_aruco):
 
 	if armed:
 		pub_aruco.publish(True)
+		print("Home lat:",gcs_cmd_home_lat, gcs_cmd_home_lon)
 		drone_control.main(drone_ID=drone_ID, home_lat=gcs_cmd_home_lat, home_lon=gcs_cmd_home_lon, home_alt=gcs_cmd_home_alt, call=True, first_land=first_land)
 		pub_aruco.publish(False)
 
@@ -402,7 +405,7 @@ def drone_bat_sim(drone_ID):
 		if armed:
 			if bat>0:
 
-				time.sleep(20)
+				time.sleep(30)
 				bat = bat - 100
 			else:
 				bat = 0

@@ -173,7 +173,7 @@ def gps_local_cb(data):
 
 	cart_x = data.pose.pose.position.x
 	cart_y = data.pose.pose.position.y
-	cart_z = data.pose.pose.position.z
+	#cart_z = data.pose.pose.position.z
 
 	if home_xy_recorded is False and cart_x != 0 and cart_y != 0:
 		home_x = cart_x
@@ -186,6 +186,10 @@ def gps_local_cb(data):
 			start_y = home_y
 			home_xy_recorded = True
 
+def gps_global_cb(data):
+	global lat, lon
+	lat = data.latitude
+	lon = data.longitude
 
 def pose_cb(data):
 	global ekf_x, ekf_y,ekf_z
@@ -296,7 +300,7 @@ def geo_pose_obj(x, y, z, a, b, c, d):
 def main(drone_ID='nan', home_lat=13.0272156, home_lon=77.5638397, home_alt=0.0, call=False, first_land=True):
 	global home_xy_recorded, home_z_recorded, cart_x, cart_y, cart_z, desired_x, desired_y, desired_z, home_yaw, aruco_x, aruco_y, aruco_z, armed, alt
 	global home_x, home_z, home_y, limit_x, limit_y, limit_z, cont, n, t, start_time, cached_var, cached_var_y, cached_var_z, time_taken
-	global vision_avg, full_avg, coord, visible, detected_aruco, is_reached, first_attempt
+	global vision_avg, full_avg, coord, visible, detected_aruco, is_reached, first_attempt, lat, lon
 	global file_str
 	
 	file_str = path.dirname(path.abspath(__file__)) +'/_' + str(datetime.now().month) + '_' + str(datetime.now().day) + '_' + str(datetime.now().hour) + '_' + str(datetime.now().minute) + '.csv'
@@ -334,6 +338,8 @@ def main(drone_ID='nan', home_lat=13.0272156, home_lon=77.5638397, home_alt=0.0,
 		rospy.Subscriber("/mavros/local_position/pose", PoseStamped, pose_cb)
 		rospy.Subscriber("/mavros/local_position/velocity_local", TwistStamped, velocity_cb)
 		rospy.Subscriber("/mavros/state", State, armed_cb)
+		rospy.Subscriber("/mavros/distance_sensor/lidarlite_pub", Range, range_cb)
+		rospy.Subscriber("/mavros/global_position/global", NavSatFix, gps_global_cb)
 
 	else:
 		if first_land:
@@ -343,6 +349,9 @@ def main(drone_ID='nan', home_lat=13.0272156, home_lon=77.5638397, home_alt=0.0,
 			rospy.Subscriber(drone_ID+"/mavros/local_position/pose", PoseStamped, pose_cb)
 			rospy.Subscriber(drone_ID+"/mavros/local_position/velocity_local", TwistStamped, velocity_cb)
 			rospy.Subscriber(drone_ID+"/mavros/state", State, armed_cb)
+			rospy.Subscriber(drone_ID+"/mavros/distance_sensor/lidarlite_pub", Range, range_cb)
+			rospy.Subscriber(drone_ID+"/mavros/global_position/global", NavSatFix, gps_global_cb)
+
 
 	if first_land:
 	
@@ -350,7 +359,6 @@ def main(drone_ID='nan', home_lat=13.0272156, home_lon=77.5638397, home_alt=0.0,
 		#rospy.Subscriber("/gazebo/model_states", ModelStates, get_pos_cb)
 		rospy.Subscriber("/aruco_coord", Vector3, aruco_coord_cb)
 		rospy.Subscriber("/aruco_visible", Bool, aruco_visible_cb)
-		# rospy.Subscriber("/mavros/distance_sensor/lidarlite_pub", Range, range_cb)
 
 		#time subscriber
 		rospy.Subscriber('clock', Clock, clock_cb)
@@ -389,7 +397,10 @@ def main(drone_ID='nan', home_lat=13.0272156, home_lon=77.5638397, home_alt=0.0,
 	data_timer = 0.
 	hold_timer = 0.
 	hover_timer = 0.
+	land_timer = 0.
 
+	last_lat = home_lat 
+	last_lon = home_lon
 
 	if not call:
 
@@ -405,10 +416,11 @@ def main(drone_ID='nan', home_lat=13.0272156, home_lon=77.5638397, home_alt=0.0,
 
 	#contact force subscriber
 	# rospy.Subscriber('/bumper_states', ContactsState, contact_cb)
-	print("ReACHED mpc")
+	print("Going to land")
 	
+	out_of_view_count = 0
+
 	while not rospy.is_shutdown():
-		out_of_view_count = 0
 		cont = cont + 1
 
 		start_timer = time.time()
@@ -443,7 +455,7 @@ def main(drone_ID='nan', home_lat=13.0272156, home_lon=77.5638397, home_alt=0.0,
 		if(marker_found and is_reached):
 			out_of_view_count = 0
 			detected_aruco = True
-			#print("----------------------------SEEN------------------------------------")
+			print("----------------------------SEEN------------------------------------")
 			aruco_x = p.point.x
 			aruco_y = p.point.y
 			aruco_z = p.point.z
@@ -460,20 +472,22 @@ def main(drone_ID='nan', home_lat=13.0272156, home_lon=77.5638397, home_alt=0.0,
 
 			acc = diff / t
 
+			last_lon = (lon + home_lon) / 2.0
+			last_lat = (lat + home_lat) / 2.0
 
 		elif(not is_reached):
 			start_time = rospy.Time.now()
-			#print("----------------------------NOT SEEN------------------------------------")
+			print("----------------------------NOT SEEN------------------------------------")
 			
 			if first_attempt:
 				pub7.publish(geo_pose_obj(home_lat, home_lon, home_alt+10, 0, 0, 0, 1))
 			else:
-				pub7.publish(geo_pose_obj(home_lat, home_lon, alt, 0, 0, 0, 1))
+				pub7.publish(geo_pose_obj(last_lat, last_lon, alt, 0, 0, 0, 1))
 
 			if(abs(vel_x) < 0.1 and abs(vel_y) < 0.1):
 				hover_timer = hover_timer + delta_time
 
-				print(hover_timer)
+				print("Reaching GPS Point:", hover_timer)
 
 				if(hover_timer > 0.5):
 					is_reached = True
@@ -489,8 +503,9 @@ def main(drone_ID='nan', home_lat=13.0272156, home_lon=77.5638397, home_alt=0.0,
 
 			first_attempt = False
 
-			if out_of_view_count==5:
+			if out_of_view_count==3:
 				is_reached = False
+				hover_timer = 0.0
 				out_of_view_count = 0
 			else:
 				out_of_view_count = out_of_view_count + 1
@@ -538,23 +553,26 @@ def main(drone_ID='nan', home_lat=13.0272156, home_lon=77.5638397, home_alt=0.0,
 			set_mode(0, 'OFFBOARD')
 
 		if(marker_found == True and cart_z <= 1.5):
+			land_timer = land_timer + delta_time
 			velocity_x_des = velocity_y_des = 0
 
-			print("Time to land:\t", hold_timer)
+			print("Less than 1.5 m")
 
-			is_reached = False
-			detected_aruco = False
-			
-			# if(hold_timer > 3):
-			set_mode(0, 'AUTO.LAND')
-			csvfile.close()
+			if(land_timer > 0.2):
+				print("Time to land:\t", hold_timer)
+				is_reached = False
+				detected_aruco = False
+				first_attempt = True
 
-			if not call:
-				sys.exit()
-			else:
-				while armed: 
-					continue
-				return
+				set_mode(0, 'AUTO.LAND')
+				csvfile.close()
+
+				if not call:
+					sys.exit()
+				else:
+					while armed: 
+						continue
+					return
 		
 		# print(velocity_z_des, vel_z, aruco_z)
 		# print("Aruco X:\t", aruco_x, "Aruco Y:\t", aruco_y, "Aruco Z:\t", aruco_z)
