@@ -8,10 +8,10 @@
 from os import sys, path
 
 sys.path.append('../MPC_lander')
-import drone_control
+from drone_control import LandUsingMPC
 
-sys.path.append('../opencv')
-from lib_aruco_pose import ArucoSingleTracker
+#sys.path.append('../opencv')
+#from lib_aruco_pose import ArucoSingleTracker
 
 import argparse
 import threading
@@ -28,7 +28,8 @@ from std_msgs.msg import String, Int16, Bool
 
 from mavros_msgs.msg import *
 from mavros_msgs.srv import *
-from sensor_msgs.msg import Imu
+from sensor_msgs.msg import *
+
 from geometry_msgs.msg import PoseStamped
 from geographic_msgs.msg import GeoPoseStamped
 from nav_msgs.msg import Odometry
@@ -36,434 +37,462 @@ from nav_msgs.msg import Odometry
 from multidrone_mission.msg import gcs_msg
 
 
-# battery percentage (for simulation only)
-bat = 100
-# drone flight status
-status = 'not yet initiated'
-# drone armed status
-armed = False
+class DroneMission():
 
-#To detect first time landing
-first_land = True
+	def __init__(self, drone_ID, toh, WP, safe, low, critical, Simulation):
 
-# Command from GSC
-gcs_cmd_str = 'none'
-gcs_cmd_home_lat = float('nan')
-gcs_cmd_home_lon = float('nan')
-gcs_cmd_x_diff = float('nan')
-gcs_cmd_y_diff = float('nan')
-gcs_cmd_x = float('nan')
-gcs_cmd_y = float('nan')
-gcs_cmd_height = float('nan')
-gcs_cmd_yaw = float('nan')
-gcs_cmd_wp = 1
+		#Public Class Variables
+		self.drone_ID = drone_ID
+		self.toh = toh
+		self.WP = WP
+		self.safe = safe
+		self.low = low
+		self.critical = critical
+		self.Simulation = Simulation
 
-#Current reletive location
-cur_x = 0
-cur_y = 0
-cur_alt = 0
+		# battery percentage (for simulation only)
+		self.__bat = 100
+		# drone flight status
+		self.__status = 'not yet initiated'
+		# drone armed status
+		self.__armed = False
 
-#Current reletive attitude
-cur_roll = 0
-cur_pitch = 0
-cur_yaw = 0
+		#To detect first time landing
+		self.__first_land = True
 
+		# Command from GCS
+		self.__gcs_cmd_str = 'none'
+		self.__gcs_cmd_home_lat = float('nan')
+		self.__gcs_cmd_home_lon = float('nan')
+		self.__gcs_cmd_home_alt = float('nan')
+		self.__gcs_cmd_aruco_lat = float('nan')
+		self.__gcs_cmd_aruco_lon = float('nan')
+		self.__gcs_cmd_aruco_alt = float('nan')
+		self.__gcs_cmd_x_diff = float('nan')
+		self.__gcs_cmd_y_diff = float('nan')
+		self.__gcs_cmd_x = float('nan')
+		self.__gcs_cmd_y = float('nan')
+		self.__gcs_cmd_height = float('nan')
+		self.__gcs_cmd_yaw = float('nan')
+		self.__gcs_cmd_wp = 1
 
-#Function callback for drone_ID+'/mavros/state'
-def armed_cb(data):
-	global armed
-	armed = data.armed
+		#Current reletive location
+		self.__cur_x = 0
+		self.__cur_y = 0
+		self.__cur_alt = 0
 
-#Function callback for drone_ID+'/mavros/battery'
-def bat_cb(data):
-	global bat
-	bat = data.percentage
+		#Current reletive attitude
+		self.__cur_roll = 0
+		self.__cur_pitch = 0
+		self.__cur_yaw = 0
 
-#Function callback for drone_ID+'/mavros/global_position/local'
-def location_cb(data):
-	global cur_x,cur_y,cur_alt
-	cur_x = data.pose.pose.position.x
-	cur_y = data.pose.pose.position.y
-	cur_alt = data.pose.pose.position.z
+		#Relative Latitude and Longitude
+		self.__dLat = []
+		self.__dLon = []
 
-#Function callback for drone_ID+'/mavros/imu/data'
-def ori_cb(data):
-	global cur_roll,cur_pitch,cur_yaw
-	orientation_q = data.orientation
-	orientation_list = (orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w)
-	(cur_roll, cur_pitch, cur_yaw) = euler_from_quaternion(orientation_list)
+		# Definitions for rospy services
+		self.__set_mode = rospy.ServiceProxy(drone_ID+'/mavros/set_mode', SetMode)
+		self.__set_cur_waypoint = rospy.ServiceProxy(drone_ID+'/mavros/mission/set_current', WaypointSetCurrent)
+		self.__waypoints_clean = rospy.ServiceProxy(drone_ID+'/mavros/mission/clear', WaypointClear)
+		self.__set_waypoint = rospy.ServiceProxy(drone_ID+'/mavros/mission/push', WaypointPush)
+		self.__set_param = rospy.ServiceProxy(drone_ID+'/mavros/param/set',ParamSet)
 
-#Function callback for 'gcs_command'
-def gcs_command_cb(data):
-	global gcs_cmd_str, gcs_cmd_home_lat, gcs_cmd_home_lon, gcs_cmd_x_diff, gcs_cmd_y_diff, gcs_cmd_x, gcs_cmd_y, gcs_cmd_height, gcs_cmd_yaw, gcs_cmd_wp
-	gcs_cmd_str = data.command
-	gcs_cmd_home_lat = data.home_lat
-	gcs_cmd_home_lon = data.home_lon
-	gcs_cmd_x_diff = data.x_diff
-	gcs_cmd_y_diff = data.y_diff
-	gcs_cmd_x = data.x
-	gcs_cmd_y = data.y
-	gcs_cmd_height = data.height
-	gcs_cmd_yaw = data.yaw 	
-	gcs_cmd_wp = data.waypoint
-
-#Function callback for drone_ID+'/mavros/mission/waypoints'
-def control_mission_cb(data, args):
-	cur_wp = data.current_seq
-	set_cur_waypoint = args[0]
-	WP = args[1]
-
-	#W[last]==W[first] (Required to keep mission continued)
-	if cur_wp==(len(WP)+1):
-		set_cur_waypoint(wp_seq=1)
-		cur_wp = 1
+		#Publisher function to publish status of drone
+		self.__pub_status = rospy.Publisher(drone_ID+'_status', String, queue_size=1)
+		#Publisher function to publish whether or not to run aruco detection code
+		self.__pub_aruco = rospy.Publisher(drone_ID+'/run_aruco_detect', Bool, queue_size=1)
 
 
-#Function called by normal_mission()
-def waypoint_dataset(dLat,dLon,WP,toh):
-	global gcs_cmd_home_lat, gcs_cmd_home_lon
+	def __armed_cb(self, data):
+		self.__armed = data.armed
 
-	W = []
-	WP_number = len(WP)
+	def __bat_cb(self, data):
+		self.__bat = data.percentage
 
-	wp = Waypoint()
-	wp.frame = 3			#FRAME_GLOBAL_REL_ALT
-	wp.command = 22  		#Takeoff
-	wp.is_current = False
-	wp.autocontinue = True
-	wp.param1 = 1 					#delay 
-	wp.param2 = 1					#Accept Radius
-	wp.param3 = 1					#Pass Radius
-	wp.param4 = 0					#Yaw
-	wp.x_lat = gcs_cmd_home_lat		#Latitude
-	wp.y_long = gcs_cmd_home_lon	#Longitude
-	wp.z_alt = toh					#altitude
-	W.append(wp)
+	def __location_cb(self, data):
+		self.__cur_x = data.pose.pose.position.x
+		self.__cur_y = data.pose.pose.position.y
+		self.__cur_alt = data.pose.pose.position.z
 
-	for i in range(WP_number):	
+	def __ori_cb(self, data):
+		orientation_q = data.orientation
+		orientation_list = (orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w)
+		(self.__cur_roll, self.__cur_pitch, self.__cur_yaw) = euler_from_quaternion(orientation_list)
+
+	def __gcs_command_cb(self, data):
+		self.__gcs_cmd_str = data.command
+		self.__gcs_cmd_home_lat = data.home_lat
+		self.__gcs_cmd_home_lon = data.home_lon
+		self.__gcs_cmd_home_alt = data.home_alt
+		self.__gcs_cmd_aruco_lat = data.aruco_lat
+		self.__gcs_cmd_aruco_lon = data.aruco_lon
+		self.__gcs_cmd_aruco_alt = data.aruco_alt
+		self.__gcs_cmd_x_diff = data.x_diff
+		self.__gcs_cmd_y_diff = data.y_diff
+		self.__gcs_cmd_x = data.x
+		self.__gcs_cmd_y = data.y
+		self.__gcs_cmd_height = data.height
+		self.__gcs_cmd_yaw = data.yaw 	
+		self.__gcs_cmd_wp = data.waypoint
+
+	def __control_mission_cb(self, data):
+		cur_wp = data.current_seq
+		#W[last]==W[first] (Required to keep mission continued)
+		if cur_wp==(len(self.WP)+1):
+			self.__set_cur_waypoint(wp_seq=1)
+			cur_wp = 1
+
+
+	def __waypoint_dataset(self):
+
+		W = []
+		WP_number = len(self.WP)
+
 		wp = Waypoint()
-		wp.frame = 3			#FRAME_GLOBAL_REL_ALT
-		wp.command = 16  		#Navigate to waypoint.
+		wp.frame = 3							#FRAME_GLOBAL_REL_ALT
+		wp.command = 22  						#Takeoff
 		wp.is_current = False
 		wp.autocontinue = True
-		wp.param1 = 1 								#delay
-		wp.param2 = 1								#Accept Radius
-		wp.param3 = 0								#Pass Radius
-		wp.param4 = WP[i][2]						#Yaw
-		wp.x_lat = gcs_cmd_home_lat + dLat[i]		#Latitude
-		wp.y_long = gcs_cmd_home_lon + dLon[i]		#Longitude
-		wp.z_alt = toh								#altitude
+		wp.param1 = 1 							#delay 
+		wp.param2 = 1							#Accept Radius
+		wp.param3 = 1							#Pass Radius
+		wp.param4 = 0							#Yaw
+		wp.x_lat = self.__gcs_cmd_home_lat		#Latitude
+		wp.y_long = self.__gcs_cmd_home_lon		#Longitude
+		wp.z_alt = self.toh						#altitude
 		W.append(wp)
 
-	wp = Waypoint()
-	wp.frame = 3			#FRAME_GLOBAL_REL_ALT
-	wp.command = 16  		#Navigate to waypoint.
-	wp.is_current = False
-	wp.autocontinue = True
-	wp.param1 = 1  								#delay
-	wp.param2 = 1								#Accept Radius
-	wp.param3 = 0								#Pass Radius
-	wp.param4 = WP[0][2]						#Yaw
-	wp.x_lat = gcs_cmd_home_lat + dLat[0]		#Latitude
-	wp.y_long = gcs_cmd_home_lon + dLon[0]		#Longitude
-	wp.z_alt = toh								#altitude
-	W.append(wp)
-	
-	return(W)
+		for i in range(WP_number):	
+			wp = Waypoint()
+			wp.frame = 3												#FRAME_GLOBAL_REL_ALT
+			wp.command = 16  											#Navigate to waypoint
+			wp.is_current = False
+			wp.autocontinue = True
+			wp.param1 = 1 												#delay
+			wp.param2 = 1												#Accept Radius
+			wp.param3 = 0												#Pass Radius
+			wp.param4 = self.WP[i][2]									#Yaw
+			wp.x_lat = self.__gcs_cmd_home_lat + self.__dLat[i]			#Latitude
+			wp.y_long = self.__gcs_cmd_home_lon + self.__dLon[i]		#Longitude
+			wp.z_alt = self.toh											#altitude
+			W.append(wp)
 
-#Function called by normal_mission()
-def dis_to_gps(x_meters,y_meters):
-	global gcs_cmd_home_lat
+		wp = Waypoint()
+		wp.frame = 3												#FRAME_GLOBAL_REL_ALT
+		wp.command = 16  											#Navigate to waypoint.
+		wp.is_current = False
+		wp.autocontinue = True
+		wp.param1 = 1  												#delay
+		wp.param2 = 1												#Accept Radius
+		wp.param3 = 0												#Pass Radius
+		wp.param4 = self.WP[0][2]									#Yaw
+		wp.x_lat = self.__gcs_cmd_home_lat + self.__dLat[0]			#Latitude
+		wp.y_long = self.__gcs_cmd_home_lon + self.__dLon[0]		#Longitude
+		wp.z_alt = self.toh											#altitude
+		W.append(wp)
+		
+		return(W)
 
-	earth_radius=6378137.0 #Radius of "spherical" earth
-	#Converting desired trajectories of drone in meters to GPS coordinates (in radians)
-	dLat = x_meters/earth_radius
-	dLon = y_meters/(earth_radius*math.cos(math.pi*gcs_cmd_home_lat/180))
-	#Converting from radians to degrees
-	dLat = dLat * 180/math.pi
-	dLon = dLon * 180/math.pi
 
-	return dLat, dLon
+	#Function to convert local coordinates (x,y) to global coordinates (latitude,longitude)
+	def __dis_to_gps(self, x_meters,y_meters):
+
+		earth_radius=6378137.0 #Radius of "spherical" earth
+
+		#Converting desired trajectories of drone in meters to GPS coordinates (in radians)
+		dLat = x_meters/earth_radius
+		dLon = y_meters/(earth_radius*math.cos(math.pi*self.__gcs_cmd_home_lat/180))
+		#Converting from radians to degrees
+		dLat = dLat * 180/math.pi
+		dLon = dLon * 180/math.pi
+
+		return dLat, dLon
 
 
-#Function called by drone_sub()
-def go_to_location(drone_ID,set_mode,set_param,toh,WP,safe):
-	global bat, armed, cur_x, cur_y, cur_alt, cur_yaw, gcs_cmd_x_diff, gcs_cmd_y_diff, gcs_cmd_x, gcs_cmd_y, gcs_cmd_height, gcs_cmd_yaw
+	#Drone goes to initial location as commanded by GCS
+	# (Can be made as protected function later)
+	def go_to_location(self):
+		
+		#Setup for initial sorty
+		if math.isnan(self.__gcs_cmd_x_diff):
+			self.__gcs_cmd_x_diff = 0.0
+		if math.isnan(self.__gcs_cmd_y_diff):
+			self.__gcs_cmd_y_diff = 0.0
+		if math.isnan(self.__gcs_cmd_x):
+			self.__gcs_cmd_x = 0.0
+		if math.isnan(self.__gcs_cmd_y):
+			self.__gcs_cmd_y = 0.0
+		if math.isnan(self.__gcs_cmd_height):
+			self.__gcs_cmd_height = self.toh
+		if math.isnan(self.__gcs_cmd_yaw):
+			self.__gcs_cmd_yaw = self.__cur_yaw
+		
+		#Publisher function to go to the desired initial location
+		pos_pub = rospy.Publisher(self.drone_ID+'/mavros/setpoint_position/local', PoseStamped, queue_size=10)
+		init_pos = PoseStamped()
+		init_pos.header.stamp = rospy.Time.now()
+		init_pos.pose.position.x = self.__gcs_cmd_x + self.__gcs_cmd_x_diff
+		init_pos.pose.position.y = self.__gcs_cmd_y + self.__gcs_cmd_y_diff
+		init_pos.pose.position.z = self.__gcs_cmd_height
+		[init_pos.pose.orientation.x, init_pos.pose.orientation.y, init_pos.pose.orientation.z, init_pos.pose.orientation.w] = quaternion_from_euler(0,0,self.__gcs_cmd_yaw)
 
-	#setting up mavros services
-	mavros.set_namespace(drone_ID+'/mavros')
 
-	#Subscriber function to get current altitude of drone
-	rospy.Subscriber(drone_ID+'/mavros/global_position/local', Odometry, location_cb)
-	#Subscriber function to get current attitude of drone
-	rospy.Subscriber(drone_ID+'/mavros/imu/data', Imu, ori_cb)
+		if not self.__armed:
 
-	#time.sleep(1)
-	
-	#Setup for initial sorty
-	if math.isnan(gcs_cmd_x_diff):
-		gcs_cmd_x_diff = 0.0
-	if math.isnan(gcs_cmd_y_diff):
-		gcs_cmd_y_diff = 0.0
-	if math.isnan(gcs_cmd_x):
-		gcs_cmd_x = 0.0
-	if math.isnan(gcs_cmd_y):
-		gcs_cmd_y = 0.0
-	if math.isnan(gcs_cmd_height):
-		gcs_cmd_height = toh
-	if math.isnan(gcs_cmd_yaw):
-		gcs_cmd_yaw = cur_yaw
-	
-	#Publisher function to go to the desired initial location
-	pos_pub = rospy.Publisher(drone_ID+'/mavros/setpoint_position/local', PoseStamped, queue_size=10)
-	init_pos = PoseStamped()
-	init_pos.header.stamp = rospy.Time.now()
-	init_pos.pose.position.x = gcs_cmd_x #+ gcs_cmd_x_diff
-	init_pos.pose.position.y = gcs_cmd_y #+ gcs_cmd_y_diff
-	init_pos.pose.position.z = gcs_cmd_height
-	[init_pos.pose.orientation.x, init_pos.pose.orientation.y, init_pos.pose.orientation.z, init_pos.pose.orientation.w] = quaternion_from_euler(0,0,gcs_cmd_yaw)
+			if self.__bat>=safe:
 
-	print(gcs_cmd_x,gcs_cmd_x_diff)
-	print(gcs_cmd_y,gcs_cmd_y_diff)
-
-	if not armed:
-
-		if bat>=safe:
-
-			#For arm and takeoff
-			#set_mode(custom_mode='GUIDED')
-
-			mavros.command.arming(True)
-			time.sleep(1)
-			
-			takeoff_alt = ParamValue()
-			takeoff_alt.real = toh
-			set_param(param_id='MIS_TAKEOFF_ALT', value=takeoff_alt) 
-
-			set_mode(0, 'AUTO.TAKEOFF')
-			while(cur_alt <= 0.9*toh):
-				time.sleep(1)
-
-			#Go to initial location as commanded by GCS
-			pos_pub.publish(init_pos)
-			set_mode(0, 'OFFBOARD')
-
-			while((abs(cur_x-gcs_cmd_x)>=0.5) or (abs(cur_y-gcs_cmd_y)>=0.5)):
-				#print((abs(cur_x-gcs_cmd_x)),(abs(cur_y-gcs_cmd_y)))
-				pos_pub.publish(init_pos)
-				time.sleep(0.2)
-
-			set_mode(0, 'AUTO.LOITER')
+				#For arm and takeoff
+				mavros.command.arming(True)
 				
+				time.sleep(1)
+				
+				takeoff_alt = ParamValue()
+				takeoff_alt.real = self.toh
+				self.__set_param(param_id='MIS_TAKEOFF_ALT', value=takeoff_alt) 
 
-		#if battery level not sufficient
+				self.__set_mode(0, 'AUTO.TAKEOFF')
+
+				while(self.__cur_alt <= 0.9*self.toh):
+					time.sleep(1)
+
+				#Go to initial location as commanded by GCS
+				pos_pub.publish(init_pos)
+				self.__set_mode(0, 'OFFBOARD')
+
+				while((abs(self.__cur_x-self.__gcs_cmd_x)>=1) or (abs(self.__cur_y-self.__gcs_cmd_y)>=1)):			
+					pos_pub.publish(init_pos)
+					time.sleep(0.2)
+
+				self.__set_mode(0, 'AUTO.LOITER')
+					
+
+			#if battery level not sufficient
+			else:
+				print(self.drone_ID + ' battery level below safe level. Therefore cannot arm and takeoff')
+				exit()
+		
+		#if drone already armed 
 		else:
-			print(drone_ID + ' battery level below safe level. Therefore cannot arm and takeoff')
+			print(self.drone_ID + ' already armed. Hence cannont takeoff')
+			self.__set_mode(0, 'AUTO.LAND')
+			while self.__armed:
+				time.sleep(1)
 			exit()
-	
-	#if drone already armed 
-	else:
-		print(drone_ID + ' already armed. Hence cannont takeoff')
-		set_mode(0, 'AUTO.LAND')
-		while armed:
-			time.sleep(1)
-		exit()
+			
+
+	#Surveillance Mission
+	# (Can be made as protected function later)
+	def normal_mission(self):
+
+		self.__dLat, self.__dLon = [None]*len(self.WP), [None]*len(self.WP)
+
+		#Function to convert distance (in meters) to latitude and longitude
+		for i in range(len(self.WP)):
+			self.__dLat[i], self.__dLon[i] = self.__dis_to_gps(self.WP[i][0],self.WP[i][1])
+
+		#Setting ground speed
+		mission_speed = ParamValue()
+		mission_speed.real = 1.0
+		self.__set_param(param_id='MPC_XY_VEL_MAX', value=mission_speed)
+
+		#Create waypoints
+		W = self.__waypoint_dataset()
+
+		time.sleep(0.5)
+
+		#Uploading waypoints and mission
+		self.__set_waypoint(start_index=0, waypoints=W)
+
+		time.sleep(0.5)
+
+		#Subscriber function to make mission continuous
+		rospy.Subscriber(self.drone_ID+'/mavros/mission/waypoints', WaypointList, self.__control_mission_cb)
+
+		#set current waypoint to gcs_cmd_waypoint
+		self.__set_cur_waypoint(wp_seq=self.__gcs_cmd_wp)
 		
+		#For doing mission
+		if self.__armed:
+			self.__set_mode(0, 'AUTO.MISSION')
+			while(self.__bat>=low):
+				continue
+			self.__set_mode(0, 'AUTO.LOITER')
 
-#Function called by drone_sub()
-def normal_mission(drone_ID,waypoints_clean,set_waypoint,set_cur_waypoint,set_mode,set_param,WP,toh,low,critical):
-	global bat, armed, gcs_cmd_wp, cur_alt
-
-	dLat, dLon = [None]*len(WP), [None]*len(WP)
-
-	#Function to convert distance (in meters) to latitude and longitude
-	for i in range(len(WP)):
-		dLat[i], dLon[i] = dis_to_gps(WP[i][0],WP[i][1])
-
-	#waypoints_clean.call()
-
-	#Setting ground speed
-	mission_speed = ParamValue()
-	mission_speed.real = 2.0
-	set_param(param_id='MPC_XY_VEL_MAX', value=mission_speed)
-
-	#Create waypoints
-	W = waypoint_dataset(dLat,dLon,WP,toh)
-
-	time.sleep(0.5)
-
-	#Uploading waypoints and mission
-	set_waypoint(start_index=0, waypoints=W)
-
-	time.sleep(0.5)
-
-	#Subscriber function to control mission parameters
-	rospy.Subscriber(drone_ID+'/mavros/mission/waypoints', WaypointList, control_mission_cb, (set_cur_waypoint,WP))
-
-	#set current waypoint to gcs_cmd_waypoint
-	set_cur_waypoint(wp_seq=gcs_cmd_wp)
-	
-	#For doing mission
-	if armed:
-		set_mode(0, 'AUTO.MISSION')
-		while(bat>=low):
-			continue
-		set_mode(0, 'AUTO.LOITER')
-
-	else:
-		print(drone_ID + ' cannont continue on mission. Please check')
-		exit()	
+		#if drone not armed 
+		else:
+			print(self.drone_ID + ' cannont continue on mission. Please check')
+			exit()	
 
 
-#Function called by drone_sub()
-def hower_and_wait(drone_ID,set_mode):
-	global armed, cur_alt, gcs_cmd_x_diff, gcs_cmd_y_diff, gcs_cmd_x, gcs_cmd_y, gcs_cmd_height, gcs_cmd_yaw
-	
-	#set_mode(custom_mode='GUIDED')
-	
-	#Publisher to increase drone's altitude
-	alt_pub = rospy.Publisher(drone_ID+'/mavros/setpoint_position/local', PoseStamped, queue_size=10)
-	inc_alt = PoseStamped()
-	inc_alt.header.stamp = rospy.Time.now()
-	inc_alt.pose.position.x = gcs_cmd_x + gcs_cmd_x_diff
-	inc_alt.pose.position.y = gcs_cmd_y + gcs_cmd_y_diff
-	inc_alt.pose.position.z = gcs_cmd_height
-	[inc_alt.pose.orientation.x, inc_alt.pose.orientation.y, inc_alt.pose.orientation.z, inc_alt.pose.orientation.w] = quaternion_from_euler(0,0,gcs_cmd_yaw)
-	
-	print(gcs_cmd_x_diff)
-
-	#Increase altitude and hover
-	if armed:
-		alt_pub.publish(inc_alt)
-		set_mode(0, 'OFFBOARD')
-		while(cur_alt <= 0.95*gcs_cmd_height):
+	#Sequence to wait for replacement drone
+	# (Can be made as protected function later)
+	def hower_and_wait(self):
+			
+		#Publisher to increase drone's altitude
+		alt_pub = rospy.Publisher(self.drone_ID+'/mavros/setpoint_position/local', PoseStamped, queue_size=10)
+		inc_alt = PoseStamped()
+		inc_alt.header.stamp = rospy.Time.now()
+		inc_alt.pose.position.x = self.__gcs_cmd_x + self.__gcs_cmd_x_diff
+		inc_alt.pose.position.y = self.__gcs_cmd_y + self.__gcs_cmd_y_diff
+		inc_alt.pose.position.z = self.__gcs_cmd_height
+		[inc_alt.pose.orientation.x, inc_alt.pose.orientation.y, inc_alt.pose.orientation.z, inc_alt.pose.orientation.w] = quaternion_from_euler(0,0,self.__gcs_cmd_yaw)
+		
+		#Increase altitude and hover
+		if self.__armed:
 			alt_pub.publish(inc_alt)
-		set_mode(0, 'AUTO.LOITER')
+			self.__set_mode(0, 'OFFBOARD')
+			while(self.__cur_alt <= 0.95*self.__gcs_cmd_height):
+				alt_pub.publish(inc_alt)
+			self.__set_mode(0, 'AUTO.LOITER')
 
-	else:
-		print(droneID + ' not armed. Cannot initiate drone substitution')
-		exit()
-
-
-#Function called by drone_sub()
-def go_to_home(drone_ID,pub_aruco):
-	global armed, gcs_cmd_home_lat, gcs_cmd_home_lon, first_land
-
-	if armed:
-		pub_aruco.publish(True)
-		drone_control.main(drone_ID=drone_ID, home_lat=gcs_cmd_home_lat, home_lon=gcs_cmd_home_lon, call=True, first_land=first_land)
-		pub_aruco.publish(False)
-
-	else:
-		print(drone_ID + ' not armed')
-		exit()
-	
-	if first_land:
-		first_land = False
+		#if drone not armed 
+		else:
+			print(self.drone_ID + ' not armed. Cannot initiate drone substitution')
+			exit()
 
 
-#Function to subscribe to the GCS command and take action accordingly (runs on sepatate thread)
-def drone_sub(drone_ID,toh,WP,safe,low,critical):
-	global status, armed, gcs_cmd_str, cur_alt
+	#Land sequence using Aruco Marker
+	# (Can be made as protected function later)
+	def go_to_home(self):
 
-	# Definitions for rospy services
-	set_mode = rospy.ServiceProxy(drone_ID+'/mavros/set_mode', SetMode)
-	#set_takeoff = rospy.ServiceProxy(drone_ID+'/mavros/cmd/takeoff', CommandTOL)
-	#set_land = rospy.ServiceProxy(drone_ID+'/mavros/cmd/land', CommandTOL)
-	set_cur_waypoint = rospy.ServiceProxy(drone_ID+'/mavros/mission/set_current', WaypointSetCurrent)
-	#set_cmd = rospy.ServiceProxy(drone_ID+'/mavros/cmd/command', CommandLong)
-	waypoints_clean = rospy.ServiceProxy(drone_ID+'/mavros/mission/clear', WaypointClear)
-	set_waypoint = rospy.ServiceProxy(drone_ID+'/mavros/mission/push', WaypointPush)
-	set_param = rospy.ServiceProxy(drone_ID+'/mavros/param/set',ParamSet)
+		'''
+		if self.__armed:
+			land_obj = LandUsingMPC(drone_ID=self.drone_ID, aruco_lat=self.__gcs_cmd_aruco_lat, aruco_lon=self.__gcs_cmd_aruco_lon, home_alt=self.__gcs_cmd_aruco_alt, call=True, first_land=self.__first_land)
+			self.__pub_aruco.publish(True)
+			land_obj.land()
+			self.__pub_aruco.publish(False)
 
-	#Subscriber function to get GCS commands
-	rospy.Subscriber('gcs_command', gcs_msg, gcs_command_cb)
-
-	#Publisher function to publish status of drone
-	pub_status = rospy.Publisher(drone_ID+'_status', String, queue_size=1)
-
-	#Publisher function to publish whether or not to run aruco detection code
-	pub_aruco = rospy.Publisher('run_aruco_detect', Bool, queue_size=1)
-
-
-	print(drone_ID + ' Ready')
-	
-
-	while not rospy.is_shutdown():
-
-		if gcs_cmd_str == drone_ID + ' takeoff': 			#GCS takeoff and go to position command for drone			
-			print(drone_ID + ' copy takeoff')
-			pub_status.publish(drone_ID + ' takeoff')
-			go_to_location(drone_ID,set_mode,set_param,toh,WP,safe)
-			pub_status.publish(drone_ID + ' at location')
-
-		if gcs_cmd_str == drone_ID + ' do mission':			#GCS normal mission command for drone
-			print(drone_ID + ' copy doing mission')
-			pub_status.publish(drone_ID + ' doing mission')
-			normal_mission(drone_ID,waypoints_clean,set_waypoint,set_cur_waypoint,set_mode,set_param,WP,toh,low,critical)
-			pub_status.publish(drone_ID + ' need replacement')
-		
-		if gcs_cmd_str == drone_ID + ' replacement ready':			#GCS command for drone to suggest that another drone is available for replacement
-			print(drone_ID + ' copy preparing for replacement')
-			pub_status.publish(drone_ID + ' copy preparing for replacement')
-			hower_and_wait(drone_ID,set_mode)
-			pub_status.publish(drone_ID + ' ready for replacement')
-		
-		if gcs_cmd_str == drone_ID + ' land':					#GCS go to home location and land command for drone
-			print(drone_ID + ' copy land')
-			pub_status.publish(drone_ID + ' copy landing')
-			go_to_home(drone_ID,pub_aruco)
-			pub_status.publish(drone_ID + ' grounded')
-		
-		if gcs_cmd_str == 'replacement for ' + drone_ID + ' not ready':	#GCS command for drone to suggest that no other drone is available for replacement
-			print(drone_ID + ' copy error')
-			set_mode(0, 'AUTO.LAND')
-			while armed:
-				time.sleep(1)
+		else:
+			print(self.drone_ID + ' not armed')
 			exit()
 		
-		rospy.sleep(0.1)
+		if self.__first_land:
+			self.__first_land = False
+		'''
 
-
-
-#Function to simulate and publish charging and discharging of battery level (runs on sepatate thread)
-def drone_bat(drone_ID):
-	global bat
-	rospy.Subscriber(drone_ID+'/mavros/battery', BatteryState, bat_cb)
-
-
-
-#FOR SIMULATION ONLY
-#Function to simulate and publish charging and discharging of battery level (runs on sepatate thread)
-def drone_bat_sim(drone_ID):
-	global bat, status, armed
-
-	#Subscriber function to check if drone is armed or not 
-	rospy.Subscriber(drone_ID+'/mavros/state', State, armed_cb)
-
-	#pub_status = rospy.Publisher(drone_ID+'_status', String, queue_size=1)
-	pub_bat = rospy.Publisher(drone_ID+'_battery', Int16, queue_size=1)
-	
-	while not rospy.is_shutdown():
+		# Simple land sequence (without MPC) for testing on simulation only
 		
-		if armed:
-			if bat>0:
-				bat = bat - 1
-				time.sleep(1)
-			else:
-				bat = 0
-		if not armed:
-			if bat<100:
-				bat = bat + 10
-				time.sleep(2)
-			else:
-				bat = 100
+		pub_goto = rospy.Publisher(self.drone_ID+'/mavros/setpoint_position/global',  GeoPoseStamped, queue_size=10)
+		gl = GeoPoseStamped()
+		gl.header.stamp = rospy.Time.now()
+		gl.pose.position.latitude = self.__gcs_cmd_aruco_lat
+		gl.pose.position.longitude = self.__gcs_cmd_aruco_lon
+		gl.pose.position.altitude = self.__gcs_cmd_aruco_alt + 5
+		[gl.pose.orientation.x, gl.pose.orientation.y, gl.pose.orientation.z, gl.pose.orientation.w] = quaternion_from_euler(0,0,0)
 
-		pub_bat.publish(bat)
-		#print(drone_ID + ' battery percent = %d' %(bat))
-		#print(drone_ID + ' status = %s' %(status))
-		rospy.sleep(0.1)
+		#Increase altitude and hover
+		if self.__armed:
+			pub_goto.publish(gl)
+			for i in range(2000):
+				self.__set_mode(0, 'OFFBOARD')
+				pub_goto.publish(gl)
+			self.__set_mode(0, 'AUTO.LAND')
 
+
+	#Function to subscribe to the GCS command and take action accordingly
+	# (Can be made as protected function later)
+	def drone_sub(self):
+
+		#Subscriber function to get GCS commands
+		rospy.Subscriber(drone_ID+'_gcs_command', gcs_msg, self.__gcs_command_cb)
+
+		#Subscriber functions
+		rospy.Subscriber(self.drone_ID+'/mavros/state', State, self.__armed_cb)
+		rospy.Subscriber(self.drone_ID+'/mavros/global_position/local', Odometry, self.__location_cb)
+		rospy.Subscriber(self.drone_ID+'/mavros/imu/data', Imu, self.__ori_cb)
+
+		print(drone_ID + ' Ready')
+		
+
+		while not rospy.is_shutdown():
+
+			if self.__gcs_cmd_str == self.drone_ID + ' takeoff': 		#GCS takeoff and go to position command for drone			
+				print(self.drone_ID + ' copy takeoff')
+				self.__pub_status.publish(self.drone_ID + ' takeoff')
+				self.go_to_location()
+				self.__pub_status.publish(self.drone_ID + ' at location')
+
+			if self.__gcs_cmd_str == self.drone_ID + ' do mission':			#GCS normal mission command for drone
+				print(self.drone_ID + ' copy doing mission')
+				self.__pub_status.publish(self.drone_ID + ' doing mission')
+				self.normal_mission()
+				self.__pub_status.publish(self.drone_ID + ' need replacement')
+			
+			if self.__gcs_cmd_str == self.drone_ID + ' replacement ready':			#GCS command for drone to suggest that another drone is available for replacement
+				print(self.drone_ID + ' copy preparing for replacement')
+				self.__pub_status.publish(self.drone_ID + ' copy preparing for replacement')
+				self.hower_and_wait()
+				self.__pub_status.publish(self.drone_ID + ' ready for replacement')
+			
+			if self.__gcs_cmd_str == self.drone_ID + ' land':					#GCS go to home location and land command for drone
+				print(self.drone_ID + ' copy land')
+				self.__pub_status.publish(self.drone_ID + ' copy landing')
+				self.go_to_home()
+				self.__pub_status.publish(self.drone_ID + ' grounded')
+			
+			if self.__gcs_cmd_str == 'replacement for ' + self.drone_ID + ' not ready':	#GCS command for drone to suggest that no other drone is available for replacement
+				print(self.drone_ID + ' copy error')
+				self.__set_mode(0, 'AUTO.LAND')
+				while self.__armed:
+					time.sleep(1)
+				exit()
+			
+			rospy.sleep(0.1)
+
+
+
+	#Function to get battery level
+	# (Can be made as protected function later)
+	def drone_bat(self):
+		rospy.Subscriber(self.drone_ID+'/mavros/battery', BatteryState, self.__bat_cb)
+
+	
+	#-------------------
+	#FOR SIMULATION ONLY
+	#-------------------
+
+	#Function to simulate the charging and discharging of battery level
+	# (Can be made as protected function later)
+	def drone_bat_sim(self):
+
+		pub_bat = rospy.Publisher(self.drone_ID+'_battery', Int16, queue_size=1)
+
+		while not rospy.is_shutdown():
+			
+			if self.__armed:
+				if self.__bat>0:
+					time.sleep(75)
+					self.__bat = self.__bat - 100
+				else:
+					self.__bat = 0
+			if not self.__armed:
+				if self.__bat<100:
+					time.sleep(10)
+					self.__bat = self.__bat + 10
+				else:
+					self.__bat = 100
+
+			pub_bat.publish(self.__bat)
+
+			rospy.sleep(0.1)
+
+
+	#main executable function
+	def run(self):
+
+		thread1 = threading.Thread(target=self.drone_sub)
+
+		if self.Simulation:
+			thread2 = threading.Thread(target=self.drone_bat_sim)
+		else:
+			thread2 = threading.Thread(target=self.drone_bat)
+
+		thread1.start()
+		thread2.daemon=True
+		thread2.start()
+
+		thread1.join()
+		thread2.join()
 
 
 if __name__ == '__main__':
@@ -488,7 +517,7 @@ if __name__ == '__main__':
 ########################################################################################################
 
 	#parser so that arguments can be ammended during run time
-	parser = argparse.ArgumentParser(description='params')
+	parser = argparse.ArgumentParser(description='drone_params')
 	parser.add_argument('--dr_no', default=0, type=int)
 	parser.add_argument('--toh', default=5.0, type=float)				#Desired Takeoff height for mission
 	
@@ -496,7 +525,9 @@ if __name__ == '__main__':
 	parser.add_argument('--waypoints', default=((5,5,0),				#Coordinate for W[1]/W[5] and heading angle while going to W[1]/W[5]
 												(-5,5,90),				#Coordinate for W[2] and heading angle while going to W[2]
 												(-5,-5,180),			#Coordinate for W[3] and heading angle while going to W[3]
-												(5,-5,270)))			#Coordinate for W[4] and heading angle while going to W[4]		
+												(5,-5,270)),			#Coordinate for W[4] and heading angle while going to W[4]		
+												nargs="+",
+												type=list)
 
 	parser.add_argument('--safe_bat',default=90, type=int)				#Minimum safe battery level to authorize takeoff (percentage)
 	parser.add_argument('--low_bat', default=80, type=int)				#Low battery level (percentage)
@@ -505,9 +536,9 @@ if __name__ == '__main__':
 
 	args = parser.parse_args()
 
-	#Making sure that these params are checked before operation
+	#Making sure that drone number is valid
 	if args.dr_no<=0:
-		print('Drone number entered already exists')
+		print('Drone number invalid')
 		exit()
 
 	#Making sure all battery levels are at most 100%
@@ -539,22 +570,18 @@ if __name__ == '__main__':
 	critical = args.critical_bat
 	Simulation = args.Simulation			
 
-	#setting minimum takeoff height (min_toh = 8 meters) for safety
+	#setting minimum takeoff height (min_toh = 5 meters) for safety
 	if toh<5:
 		toh=5
 
 	rospy.init_node('drone_'+str(drone_num))
 
-	#ID of drone (Ex. drone1 , drone2 , drone3 ...) 
+	#ID of drone (Ex. drone1 , drone2 , drone3 ...)
 	drone_ID = 'drone' + str(drone_num)
 
-	thread1 = threading.Thread(target=drone_sub,args=(drone_ID,toh,WP,safe,low,critical))
+	#setting up mavros services
+	mavros.set_namespace(drone_ID+'/mavros')
 
-	if Simulation:
-		thread2 = threading.Thread(target=drone_bat_sim,args=(drone_ID,))
-	else:
-		thread2 = threading.Thread(target=drone_bat,args=(drone_ID,))
-
-	thread1.start()
-	thread2.daemon=True
-	thread2.start()
+	drone = DroneMission(drone_ID=drone_ID, toh=toh, WP=WP, safe=safe, low=low, critical=critical, Simulation=Simulation)
+	drone.run()
+	
