@@ -30,7 +30,7 @@ from mavros_msgs.msg import *
 from mavros_msgs.srv import *
 from sensor_msgs.msg import *
 
-from geometry_msgs.msg import PoseStamped, TwistStamped, Vector3, Quaternion, Point, Twist, PointStamped
+from geometry_msgs.msg import PoseStamped
 from geographic_msgs.msg import GeoPoseStamped
 from nav_msgs.msg import Odometry
 
@@ -86,10 +86,6 @@ class DroneMission():
 		self.__cur_pitch = 0
 		self.__cur_yaw = 0
 
-		#Current velocity
-		self.__vel_x = 0
-		self.__vel_y = 0
-
 		#Relative Latitude and Longitude
 		self.__dLat = []
 		self.__dLon = []
@@ -122,10 +118,6 @@ class DroneMission():
 		orientation_q = data.orientation
 		orientation_list = (orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w)
 		(self.__cur_roll, self.__cur_pitch, self.__cur_yaw) = euler_from_quaternion(orientation_list)
-
-	def __velocity_cb(self, data):
-		self.__vel_x = data.twist.linear.x
-		self.__vel_y = data.twist.linear.y
 
 	def __gcs_command_cb(self, data):
 		self.__gcs_cmd_str = data.command
@@ -215,50 +207,6 @@ class DroneMission():
 		dLon = dLon * 180/math.pi
 
 		return dLat, dLon
-
-
-	#When error occurs in the system
-	def failsafe(self):
-
-		pub_goto_home = rospy.Publisher(self.drone_ID+'/mavros/setpoint_position/global',  GeoPoseStamped, queue_size=10)
-		gh = GeoPoseStamped()
-		gh.header.stamp = rospy.Time.now()
-		gh.pose.position.latitude = 13.0272966
-		gh.pose.position.longitude = 77.5636397
-		gh.pose.position.altitude = 930
-		[gh.pose.orientation.x, gh.pose.orientation.y, gh.pose.orientation.z, gh.pose.orientation.w] = quaternion_from_euler(0,0,0)
-
-		if not self.__armed:
-
-			mavros.command.arming(True)
-			time.sleep(1)
-			
-			takeoff_alt = ParamValue()
-			takeoff_alt.real = 20
-			self.__set_param(param_id='MIS_TAKEOFF_ALT', value=takeoff_alt) 
-
-			self.__set_mode(0, 'AUTO.TAKEOFF')
-
-			while(self.__cur_alt <= 19):
-				time.sleep(1)
-
-		start_timer = time.time()
-
-		while(time.time()-start_timer<2):
-			pub_goto_home.publish(gh)
-			self.__set_mode(0, 'OFFBOARD')
-
-		while(abs(self.__vel_x)>0.1 or abs(self.__vel_y)>0.1):
-			pub_goto_home.publish(gh)
-
-		time.sleep(1)
-		self.__set_mode(0, 'AUTO.LAND')
-
-		while self.__armed:
-			continue
-
-		print("FAILSAFE PROCEDURE COMPLETED")
-		exit()
 
 
 	#Drone goes to initial location as commanded by GCS
@@ -407,7 +355,7 @@ class DroneMission():
 	# (Can be made as protected function later)
 	def go_to_home(self):
 
-		
+		'''
 		if self.__armed:
 			land_obj = LandUsingMPC(drone_ID=self.drone_ID, aruco_lat=self.__gcs_cmd_aruco_lat, aruco_lon=self.__gcs_cmd_aruco_lon, home_alt=self.__gcs_cmd_aruco_alt, call=True, first_land=self.__first_land)
 			self.__pub_aruco.publish(True)
@@ -423,23 +371,20 @@ class DroneMission():
 		'''
 
 		# Simple land sequence (without MPC) for testing on simulation only
-		
-		pub_goto = rospy.Publisher(self.drone_ID+'/mavros/setpoint_position/global',  GeoPoseStamped, queue_size=10)
+
+		pub_goto = rospy.Publisher(self.drone_ID+'/mavros/setpoint_position/global',  GeoPoseStamped, queue_size=1)
 		gl = GeoPoseStamped()
-		gl.header.stamp = rospy.Time.now()
 		gl.pose.position.latitude = self.__gcs_cmd_aruco_lat
 		gl.pose.position.longitude = self.__gcs_cmd_aruco_lon
 		gl.pose.position.altitude = self.__gcs_cmd_aruco_alt + 5
 		[gl.pose.orientation.x, gl.pose.orientation.y, gl.pose.orientation.z, gl.pose.orientation.w] = quaternion_from_euler(0,0,0)
+		#gl.yaw = 0.0
 
-		#Increase altitude and hover
-		if self.__armed:
+		for i in range(3000):
+			self.__set_mode(0, 'OFFBOARD')
 			pub_goto.publish(gl)
-			for i in range(2000):
-				self.__set_mode(0, 'OFFBOARD')
-				pub_goto.publish(gl)
-			self.__set_mode(0, 'AUTO.LAND')
-		'''
+
+		self.__set_mode(0, 'AUTO.LAND')
 
 	#Function to subscribe to the GCS command and take action accordingly
 	# (Can be made as protected function later)
@@ -452,7 +397,6 @@ class DroneMission():
 		rospy.Subscriber(self.drone_ID+'/mavros/state', State, self.__armed_cb)
 		rospy.Subscriber(self.drone_ID+'/mavros/global_position/local', Odometry, self.__location_cb)
 		rospy.Subscriber(self.drone_ID+'/mavros/imu/data', Imu, self.__ori_cb)
-		rospy.Subscriber(self.drone_ID+'/mavros/local_position/velocity_local', TwistStamped, self.__velocity_cb)
 
 		print(drone_ID + ' Ready')
 		
@@ -485,7 +429,10 @@ class DroneMission():
 			
 			if self.__gcs_cmd_str == 'replacement for ' + self.drone_ID + ' not ready':	#GCS command for drone to suggest that no other drone is available for replacement
 				print(self.drone_ID + ' copy error')
-				self.failsafe()
+				self.__set_mode(0, 'AUTO.LAND')
+				while self.__armed:
+					time.sleep(1)
+				exit()
 			
 			rospy.sleep(0.1)
 
@@ -511,7 +458,7 @@ class DroneMission():
 			
 			if self.__armed:
 				if self.__bat>0:
-					time.sleep(40)
+					time.sleep(60)
 					self.__bat = self.__bat - 100
 				else:
 					self.__bat = 0
@@ -573,9 +520,7 @@ if __name__ == '__main__':
 	
 	#Mission waypoints in (x,y,heading_angle)
 	parser.add_argument('--waypoints', default=((5,5,0),				#Coordinate for W[1]/W[5] and heading angle while going to W[1]/W[5]
-												(-5,5,90),				#Coordinate for W[2] and heading angle while going to W[2]
-												(-5,-5,180),			#Coordinate for W[3] and heading angle while going to W[3]
-												(5,-5,270)),			#Coordinate for W[4] and heading angle while going to W[4]		
+												(5,-5,0)),				#Coordinate for W[2] and heading angle while going to W[2]
 												nargs="+",
 												type=list)
 

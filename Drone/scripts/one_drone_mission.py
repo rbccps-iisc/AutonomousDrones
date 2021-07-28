@@ -312,9 +312,9 @@ def normal_mission(drone_ID,waypoints_clean,set_waypoint,set_cur_waypoint,set_mo
 
 
 #Function called by drone_sub()
-def go_to_home(drone_ID,pub_aruco):
+def go_to_home(drone_ID,pub_aruco,set_mode):
 	global armed, gcs_cmd_home_lat, gcs_cmd_home_lon, gcs_cmd_home_alt, first_land
-
+	'''
 	if armed:
 		pub_aruco.publish(True)
 		drone_control.main(drone_ID=drone_ID, home_lat=gcs_cmd_home_lat, home_lon=gcs_cmd_home_lon, home_alt=gcs_cmd_home_alt, call=True, first_land=first_land)
@@ -326,7 +326,22 @@ def go_to_home(drone_ID,pub_aruco):
 	
 	if first_land:
 		first_land = False
+	'''
 
+	pub_goto = rospy.Publisher(drone_ID+'/mavros/setpoint_position/global',  GeoPoseStamped, queue_size=10)
+	gl = GeoPoseStamped()
+	gl.header.stamp = rospy.Time.now()
+	gl.pose.position.latitude = 13.0272071
+	gl.pose.position.longitude = 77.563642
+	gl.pose.position.altitude = 840
+	[gl.pose.orientation.x, gl.pose.orientation.y, gl.pose.orientation.z, gl.pose.orientation.w] = quaternion_from_euler(0,0,0)
+
+	#Increase altitude and hover
+	pub_goto.publish(gl)
+	for i in range(2000):
+		set_mode(0, 'OFFBOARD')
+		pub_goto.publish(gl)
+		set_mode(0, 'AUTO.LAND')
 
 #Function to subscribe to the GCS command and take action accordingly (runs on sepatate thread)
 def drone_sub(drone_ID,toh,WP,safe,low,critical):
@@ -373,7 +388,7 @@ def drone_sub(drone_ID,toh,WP,safe,low,critical):
 		if armed and bat<=low:					#GCS go to home location and land command for drone
 			print(drone_ID + ' copy land')
 			pub_status.publish(drone_ID + ' copy landing')
-			go_to_home(drone_ID,pub_aruco)
+			go_to_home(drone_ID,pub_aruco,set_mode)
 			pub_status.publish(drone_ID + ' grounded')
 		
 		rospy.sleep(0.1)
@@ -403,7 +418,7 @@ def drone_bat_sim(drone_ID):
 		if armed:
 			if bat>0:
 
-				time.sleep(20)
+				time.sleep(35)
 				bat = bat - 100
 			else:
 				bat = 0

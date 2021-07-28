@@ -196,10 +196,6 @@ class GCScontrol():
 		cmd.home_lon = self.home_lon[group_no]
 		cmd.home_alt = self.home_alt[group_no]
 
-		cmd.aruco_lat = self.aruco[0]._aruco_lat
-		cmd.aruco_lon = self.aruco[0]._aruco_lon
-		cmd.aruco_alt = self.aruco[0]._aruco_alt
-
 		time.sleep(1)
 
 		start = False
@@ -240,9 +236,9 @@ class GCScontrol():
 
 				if self.drone[self.__active[group_no]]._status == active_ID + ' need replacement':
 
-					#cmd.aruco_lat = self.aruco[self.__replacement[group_no]]._aruco_lat
-					#cmd.aruco_lon = self.aruco[self.__replacement[group_no]]._aruco_lon
-					#cmd.aruco_alt = self.aruco[self.__replacement[group_no]]._aruco_alt
+					cmd.aruco_lat = self.aruco[self.__replacement[group_no]]._aruco_lat
+					cmd.aruco_lon = self.aruco[self.__replacement[group_no]]._aruco_lon
+					cmd.aruco_alt = self.aruco[self.__replacement[group_no]]._aruco_alt
 
 					if  not self.drone[self.__replacement[group_no]]._armed:
 
@@ -351,8 +347,8 @@ class GCScontrol():
 if __name__ == '__main__':
 	
 	parser = argparse.ArgumentParser(description='gcs_params')
-	parser.add_argument('--ndr', default=2, type=int)			#no. of drones in one group
-	parser.add_argument('--nar', default=1, type=int)			#no. of aruco markers in one group
+	parser.add_argument('--ndr', default=3, type=int)			#no. of drones in one group
+	parser.add_argument('--nar', default=3, type=int)			#no. of aruco markers in one group
 	parser.add_argument('--groups', default=1, type=int)		#no. of groups
 	
 	args = parser.parse_args()

@@ -308,6 +308,7 @@ class LandUsingMPC():
 
 					if(hover_timer > 0.5):
 						self.__is_reached = True
+						failsafe_timer = time.time()
 
 			
 			else:
@@ -352,12 +353,27 @@ class LandUsingMPC():
 						continue
 					return
 
+			if(self.__is_reached and time.time()-failsafe_timer>20):
+
+				print('MPC FAILSAFE ACTIVATED')
+				
+				set_mode(0, 'AUTO.LAND')
+
+				csvfile.close()
+
+				while self.__armed: 
+					continue
+
+				print('MPC FAILSAFE COMPLETED')
+
+				if not self.call:
+					sys.exit()
+				else:
+					return
 
 			self.__full_avg = (self.__full_avg + time.time()-start_timer)
 
-
 			rate.sleep()
-
 
 		print("Full Average Time =\t", self.__full_avg/self.__cont)
 		
