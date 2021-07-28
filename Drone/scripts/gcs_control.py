@@ -2,7 +2,8 @@
 
 # Code to control gcs station for multiple drones
 # this code collects state information from each drone in the system, and coordinates their actions
-# Usage - python gcs_control.py
+# Usage - python gcs_control.py --ndr=#no_of_drones_per_group --nar=no_of_arucos_per_group --groups=#no_of_groups
+#Example python gcs_control.py --ndr=2 --nar=2 --groups=1
 
 
 from os import sys, path
@@ -35,21 +36,23 @@ class GCScontrol():
 
 	def __init__(self, ndr, nar, groups):
 
-		self.ndr = ndr
-		self.nar = nar
-		self.groups = groups
+		self.ndr = ndr		#number of drones in one group
+		self.nar = nar		#number of aruco markers in one group
+		self.groups = groups	#number of groups. Each group must have same no. of drones/arucos and setup of all groups must be symmetric with only difference being in their positions
 
 		self.drone = [None] * (self.ndr*self.groups)
 		self.aruco = [None] * (self.nar*self.groups)
 
-		self.__active = [None] * (self.groups) 			#List of drone IDs which will be currently flying and carrying out mission
-		self.__replacement = [None] * (self.groups)		#List of drone IDs which will be used to replace active drones in case of battery level degradation
+		self.__active = [None] * (self.groups) 		#List of drone IDs which will be currently flying and carrying out mission
+		self.__replacement = [None] * (self.groups)	#List of drone IDs which will be used to replace active drones in case their battery level falls below a certain percentage
 		
-		self.__pub_cmd = [None] * (self.ndr*self.groups)
+		self.__pub_cmd = [None] * (self.ndr*self.groups)	#Publisher object for commands to be published to each drone
 
-		self.__x_diff = [None]* (self.ndr*self.groups)
+		#List of local frame GPS position difference between a particular drone and the first drone of the group
+		self.__x_diff = [None]* (self.ndr*self.groups)	
 		self.__y_diff = [None]* (self.ndr*self.groups)
-
+		
+		#Safe Home Position GPS coordinates. In this system, there is 1 safe location for each group (Can be extended to more later)
 		self.home_lat = [float('nan')] * self.groups
 		self.home_lon = [float('nan')] * self.groups
 		self.home_alt = [float('nan')] * self.groups
@@ -57,16 +60,17 @@ class GCScontrol():
 
 	class drone_params():
 		def __init__(self):
-			self._cur_x = 0
-			self._cur_y = 0
-			self._cur_alt = 0
-			self._roll = 0
-			self._pitch = 0
-			self._yaw = 0
-			self._armed = None
-			self._waypoint = 1
-			self._status = 'unavailable'
-			self._bat = 100
+			#These parameters are taken from the drone's autopilot
+			self._cur_x = 0			#Current x location of drone in local GPS coordinates
+			self._cur_y = 0			#Current y location of drone in local GPS coordinates
+			self._cur_alt = 0		#Current altitude of drone in local GPS coordinates
+			self._roll = 0			#Current roll angle of drone in local GPS coordinates
+			self._pitch = 0			#Current pitch angle of drone in local GPS coordinates
+			self._yaw = 0			#Current yaw angle of drone in local GPS coordinates
+			self._armed = None		#armed status of the drone
+			self._waypoint = 1		#Current waypoint which the drone is at (Default 1st waypoint)
+			self._status = 'unavailable'	#Message from drone as per its status. Need Replacement, Ready to takeoff, etc.
+			self._bat = 100			#Battery level of drone 
 
 		def _local_pos_cb(self, data):
 			self._cur_x = data.pose.pose.position.x
@@ -96,6 +100,7 @@ class GCScontrol():
 
 	class aruco_params():
 		def __init__(self):
+			#GPS data from aruco
 			self._aruco_lat = float('nan')
 			self._aruco_lon = float('nan')
 			self._aruco_alt = float('nan')
@@ -115,7 +120,7 @@ class GCScontrol():
 
 		for i in range(tot_drones):
 			
-			self.drone[i] = self.drone_params()
+			self.drone[i] = self.drone_params()	#drone class objects
 
 			drone_ID = 'drone' + str(i+1)
 
@@ -140,7 +145,8 @@ class GCScontrol():
 			#However since 1st drone of each group starts on top of aruco marker, this is also accurate as of now.
 			#Later, we must replace this with actual configuration of arucos
 			aruco_ID = 'drone' + str(i+1)
-
+			
+			#We can add further callbacks as the landing pad develops. Plans to add wind sensors, temp sensors, etc to the landing pad
 			rospy.Subscriber(aruco_ID + '/mavros/global_position/global', NavSatFix, self.aruco[i]._global_pos_cb)
 			rospy.Subscriber(aruco_ID + '/mavros/altitude', Altitude, self.aruco[i]._alt_cb)
 
@@ -150,7 +156,7 @@ class GCScontrol():
 	def set_home_positions(self):
 
 		#Home position is a safe location where the drone can land for maintanence or in case of failure.
-		#It is also the local (0,0,0) coordinate for a particular group of drones
+		#Each group of drones has one safe location (Can be extended later)
 		
 		#Setting the location of 1st aruco marker of each group as the home position for that group of drones
 		#If all home locations have a gps, then we can set home location directly using that gps' coordinates
@@ -179,7 +185,7 @@ class GCScontrol():
 			pub_home.publish(pub_home_loc)
 			time.sleep(1)
 			
-			#Nullifying the local coordinate differences between all drones in a particular group wrt 1st drone of the group
+			#Finding the local coordinate differences between all drones in a particular group wrt 1st drone of the group
 			self.__x_diff[i] = self.drone[init_drone_no]._cur_x - self.drone[i]._cur_x
 			self.__y_diff[i] = self.drone[init_drone_no]._cur_y - self.drone[i]._cur_y
 			time.sleep(1)
@@ -204,12 +210,14 @@ class GCScontrol():
 
 			active_ID = 'drone' + str(self.__active[group_no]+1)
 			replacement_ID = 'drone' + str(self.__replacement[group_no]+1)
-
+			
+			#For initial trial. Here we just ask the 1st drone of the group to takeoff and start mission
 			if not start:
 		
 				start = True
 
-				cmd.command = active_ID + ' takeoff'
+				cmd.command = active_ID + ' takeoff'	#1st drone takeoff command given
+				#These parameters are default for the 1st sorty. relaying float('nan') causes drone to assume default values
 				cmd.x_diff = float('nan')
 				cmd.y_diff = float('nan')
 				cmd.x = float('nan')
@@ -222,32 +230,37 @@ class GCScontrol():
 				cmd.command = 'None'
 				self.__pub_cmd[self.__active[group_no]].publish(cmd)
 				
-
+				
 				while(self.drone[self.__active[group_no]]._status != active_ID + ' at location'):
 					continue
-
+				
+				#When drone has reached the initial location for 1st sorty, GCS asks it to start mission.
 				cmd.command = active_ID + ' do mission'
 				self.__pub_cmd[self.__active[group_no]].publish(cmd)
 				time.sleep(1)
 				cmd.command = 'None'
 				self.__pub_cmd[self.__active[group_no]].publish(cmd)
-
+			
+			#For subsequent sorties after 1st sorty
 			else:
-
+				#Condition when the active drone has low battery and seeks GCS for a replacement
 				if self.drone[self.__active[group_no]]._status == active_ID + ' need replacement':
-
+					
+					#aruco GPS location where the active drone must go in order to land safely using MPC algorithm
 					cmd.aruco_lat = self.aruco[self.__replacement[group_no]]._aruco_lat
 					cmd.aruco_lon = self.aruco[self.__replacement[group_no]]._aruco_lon
 					cmd.aruco_alt = self.aruco[self.__replacement[group_no]]._aruco_alt
 
-					if  not self.drone[self.__replacement[group_no]]._armed:
-
+					if  not self.drone[self.__replacement[group_no]]._armed:		#just a safety check to make sure replacement drone is not armed
+	
+						#Taking current mission info from active drone
 						mission_height = self.drone[self.__active[group_no]]._cur_alt
 						mission_waypoint = self.drone[self.__active[group_no]]._waypoint
 						mission_x = self.drone[self.__active[group_no]]._cur_x
 						mission_y = self.drone[self.__active[group_no]]._cur_y
 						mission_yaw = self.drone[self.__active[group_no]]._yaw
-
+						
+						#Telling active drone that replacement drone is available and ready.
 						cmd.command = active_ID + ' replacement ready'
 						cmd.x = self.drone[self.__active[group_no]]._cur_x
 						cmd.y = self.drone[self.__active[group_no]]._cur_y
@@ -259,10 +272,12 @@ class GCScontrol():
 						time.sleep(1)
 						cmd.command = 'None'
 						self.__pub_cmd[self.__active[group_no]].publish(cmd)
-
+						
+						#On getting the above information, the active drone increases altitude. GCS waits till this has finished
 						while self.drone[self.__active[group_no]]._status != active_ID + ' ready for replacement':		
 							continue
 						
+						#Commanding replacement drone to takeoff and position itself according to the current mission info
 						cmd.command = replacement_ID + ' takeoff'
 						cmd.x = mission_x
 						cmd.y = mission_y
@@ -274,10 +289,12 @@ class GCScontrol():
 						time.sleep(1)
 						cmd.command = 'None'
 						self.__pub_cmd[self.__replacement[group_no]].publish(cmd)
-
+						
+						#GCS waiting for replacement drone to assume position according to current mission info.
 						while(self.drone[self.__replacement[group_no]]._status != replacement_ID + ' at location'):
 							continue
-
+						
+						#Commanding active drone to start land sequence. This includes going to aruco location and landing accurately on landing pad using MPC algo.
 						cmd.command = active_ID + ' land'
 						cmd.x_diff = self.__x_diff[self.__active[group_no]]
 						cmd.y_diff = self.__y_diff[self.__active[group_no]]
@@ -285,7 +302,8 @@ class GCScontrol():
 						time.sleep(1)
 						cmd.command = 'None'
 						self.__pub_cmd[self.__active[group_no]].publish(cmd)
-				
+						
+						#Commanding replacement drone (which has just now become the active drone) to continue mission
 						if self.drone[self.__replacement[group_no]]._armed:
 							cmd.command = replacement_ID + ' do mission'
 							cmd.waypoint = mission_waypoint
@@ -295,7 +313,10 @@ class GCScontrol():
 							self.__pub_cmd[self.__replacement[group_no]].publish(cmd)
 
 						self.__active[group_no] = self.__replacement[group_no]
-				
+					
+					#If replacement drone is armed then there is some error in the system
+					#This throws an error message in such situation.
+					#Failsafe procedure is not implemented yet, but can be found in the failsafe branch on github
 					else:
 						cmd.command = 'replacement for ' + active_ID + ' not ready'
 						for i in range(init_drone_no, init_drone_no+self.ndr):
@@ -305,10 +326,14 @@ class GCScontrol():
 
 			rate.sleep()
 
-
+			
+	#Function to find replacement drone for a particular group
 	def __replacement_drone_search(self, init_drone_no, group_no):
 
 		while not rospy.is_shutdown():
+			
+			#This loop checks battery percentage of all non active drones in the group, identifies the one with highest battery percentage and selects that as the replacement drone for this group
+			#Loop runs continuously in parallel to the main operation. 
 			for i in range(init_drone_no,init_drone_no+self.ndr):
 				if (self.drone[i] != self.drone[self.__active[group_no]] and self.drone[i]._bat > self.drone[self.__replacement[group_no]]._bat):
 					self.__replacement[group_no] = i
@@ -317,7 +342,8 @@ class GCScontrol():
 	def run_gcs(self):
 
 		rospy.init_node('gcs_control')
-
+		
+		#Getting data for drones, arucos, and home locations
 		self.init_gcs_for_drones()
 		time.sleep(1)
 		self.init_gcs_for_arucos()
@@ -327,6 +353,7 @@ class GCScontrol():
 		
 		threads = []
 		
+		#foreach group we initialize 2 threads - 1 to give and take commands from GCS to drones and 1 to select the current replacement drone for the group
 		for i in range(self.groups):
 
 			init_drone_no = i*self.ndr
