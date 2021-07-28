@@ -42,13 +42,13 @@ class DroneMission():
 	def __init__(self, drone_ID, toh, WP, safe, low, critical, Simulation):
 
 		#Public Class Variables
-		self.drone_ID = drone_ID
-		self.toh = toh
-		self.WP = WP
-		self.safe = safe
-		self.low = low
-		self.critical = critical
-		self.Simulation = Simulation
+		self.drone_ID = drone_ID	#drone_ID = drone1, drone2, drone3...
+		self.toh = toh			#takeoff height
+		self.WP = WP			#list of predefined waypoints
+		self.safe = safe		#min. battery level required for drone to takeoff
+		self.low = low			#batery level at which drone stops doing mission and contacts GCS 
+		self.critical = critical	#critical battery level (not used currently)
+		self.Simulation = Simulation	#If true, then Simulation setup. For field trials make False.
 
 		# battery percentage (for simulation only)
 		self.__bat = 100
@@ -60,33 +60,45 @@ class DroneMission():
 		#To detect first time landing
 		self.__first_land = True
 
-		# Command from GCS
-		self.__gcs_cmd_str = 'none'
-		self.__gcs_cmd_home_lat = float('nan')
-		self.__gcs_cmd_home_lon = float('nan')
+		#Command from GCS telling this Drone what to do
+		self.__gcs_cmd_str = 'none'			
+		
+		#Home (Safe) GPS location for this drone (Currently taken as initial location of 1st drone of this group)
+		self.__gcs_cmd_home_lat = float('nan')		
+		self.__gcs_cmd_home_lon = float('nan')		
 		self.__gcs_cmd_home_alt = float('nan')
+		
+		#Aruco GPS location given by GCS to which this drone must go to in order to land safely
 		self.__gcs_cmd_aruco_lat = float('nan')
 		self.__gcs_cmd_aruco_lon = float('nan')
 		self.__gcs_cmd_aruco_alt = float('nan')
+		
+		#Difference of this drone's local GPS coordinates wrt the local GPS coordinates of the 1st drone in this group
 		self.__gcs_cmd_x_diff = float('nan')
 		self.__gcs_cmd_y_diff = float('nan')
+		
+		#Desired GPS location from GCS in local coordinate system
 		self.__gcs_cmd_x = float('nan')
 		self.__gcs_cmd_y = float('nan')
 		self.__gcs_cmd_height = float('nan')
+		
+		#Desired yaw position from GCS (in degrees)
 		self.__gcs_cmd_yaw = float('nan')
+		
+		#Next waypoint in mission to which the drone must go to
 		self.__gcs_cmd_wp = 1
 
-		#Current reletive location
+		#This drone's local GPS coordinates
 		self.__cur_x = 0
 		self.__cur_y = 0
 		self.__cur_alt = 0
 
-		#Current reletive attitude
+		#Current drone's attitude
 		self.__cur_roll = 0
 		self.__cur_pitch = 0
 		self.__cur_yaw = 0
 
-		#Relative Latitude and Longitude
+		#List of waypoints fed to the drone, after converting from meters to Lat/Lon
 		self.__dLat = []
 		self.__dLon = []
 
@@ -134,7 +146,8 @@ class DroneMission():
 		self.__gcs_cmd_height = data.height
 		self.__gcs_cmd_yaw = data.yaw 	
 		self.__gcs_cmd_wp = data.waypoint
-
+	
+	#Function to keep the mission continuous. When drone reaches last waypoint, next waypoint is updated to 1
 	def __control_mission_cb(self, data):
 		cur_wp = data.current_seq
 		#W[last]==W[first] (Required to keep mission continued)
@@ -142,7 +155,7 @@ class DroneMission():
 			self.__set_cur_waypoint(wp_seq=1)
 			cur_wp = 1
 
-
+	#Function to update the drone's waypoint list
 	def __waypoint_dataset(self):
 
 		W = []
