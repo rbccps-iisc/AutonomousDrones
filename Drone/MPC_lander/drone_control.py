@@ -99,6 +99,7 @@ class LandUsingMPC():
 		self.__full_avg                 = 0.0
 		self.__coord                    = [0,0,0]
 		self.__visible                  = False
+		self.__land_timeout				= 40
 
 
 	def __clock_cb(self, data):
@@ -353,7 +354,7 @@ class LandUsingMPC():
 						continue
 					return
 
-			if(self.__is_reached and time.time()-failsafe_timer>20):
+			if(self.__is_reached and time.time()-failsafe_timer>self.__land_timeout):
 
 				print('MPC FAILSAFE ACTIVATED')
 				
